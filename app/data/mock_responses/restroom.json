@@ -1,0 +1,27 @@
+{
+  "rows": [
+    {
+      "station_name": "홍대입구",
+      "line": "2",
+      "facility_id": "HONG-AR-1",
+      "facility_type": "장애인화장실",
+      "status": "운영",
+      "location": "대합실 고객안내센터 인근",
+      "inside_gate": false,
+      "open_time": "05:30-24:00",
+      "has_emergency_bell": true
+    },
+    {
+      "station_name": "삼성",
+      "line": "2",
+      "facility_id": "SAMS-AR-1",
+      "facility_type": "장애인화장실",
+      "status": "운영",
+      "location": "개찰구 내부",
+      "inside_gate": true,
+      "open_time": "05:30-24:00",
+      "has_emergency_bell": true
+    }
+  ]
+}
+

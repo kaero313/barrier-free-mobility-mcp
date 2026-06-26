@@ -1,0 +1,132 @@
+{
+  "rows": [
+    {
+      "route_id": "mock-hongdae-samsung-direct",
+      "origin": "홍대입구",
+      "destination": "삼성",
+      "stations": ["홍대입구", "강남", "삼성"],
+      "segments": [
+        {
+          "from_station": "홍대입구",
+          "to_station": "강남",
+          "line": "2",
+          "transfer": false,
+          "estimated_minutes": 27
+        },
+        {
+          "from_station": "강남",
+          "to_station": "삼성",
+          "line": "2",
+          "transfer": false,
+          "estimated_minutes": 6
+        }
+      ],
+      "transfer_count": 0,
+      "estimated_minutes": 33,
+      "distance_meters": 15500,
+      "raw_summary": "2호선 홍대입구에서 삼성까지 환승 없이 이동"
+    },
+    {
+      "route_id": "mock-hongdae-samsung-transfer",
+      "origin": "홍대입구",
+      "destination": "삼성",
+      "stations": ["홍대입구", "시청", "삼성"],
+      "segments": [
+        {
+          "from_station": "홍대입구",
+          "to_station": "시청",
+          "line": "2",
+          "transfer": true,
+          "estimated_minutes": 12
+        },
+        {
+          "from_station": "시청",
+          "to_station": "삼성",
+          "line": "2",
+          "transfer": false,
+          "estimated_minutes": 25
+        }
+      ],
+      "transfer_count": 1,
+      "estimated_minutes": 37,
+      "distance_meters": 16800,
+      "raw_summary": "환승 1회가 포함된 대안 경로"
+    },
+    {
+      "route_id": "mock-seoul-cityhall-line1",
+      "origin": "서울역",
+      "destination": "시청",
+      "stations": ["서울역", "시청"],
+      "segments": [
+        {
+          "from_station": "서울역",
+          "to_station": "시청",
+          "line": "1",
+          "transfer": false,
+          "estimated_minutes": 3
+        }
+      ],
+      "transfer_count": 0,
+      "estimated_minutes": 3,
+      "distance_meters": 1100,
+      "raw_summary": "1호선 서울역에서 시청까지 환승 없이 이동"
+    },
+    {
+      "route_id": "mock-express-terminal-yeouido-line9",
+      "origin": "고속터미널",
+      "destination": "여의도",
+      "stations": ["고속터미널", "여의도"],
+      "segments": [
+        {
+          "from_station": "고속터미널",
+          "to_station": "여의도",
+          "line": "9",
+          "transfer": false,
+          "estimated_minutes": 10
+        }
+      ],
+      "transfer_count": 0,
+      "estimated_minutes": 10,
+      "distance_meters": 6200,
+      "raw_summary": "9호선 고속터미널에서 여의도까지 환승 없이 이동"
+    },
+    {
+      "route_id": "mock-sadang-ddp-line4-maintenance",
+      "origin": "사당",
+      "destination": "동대문역사문화공원",
+      "stations": ["사당", "동대문역사문화공원"],
+      "segments": [
+        {
+          "from_station": "사당",
+          "to_station": "동대문역사문화공원",
+          "line": "4",
+          "transfer": false,
+          "estimated_minutes": 28
+        }
+      ],
+      "transfer_count": 0,
+      "estimated_minutes": 28,
+      "distance_meters": 13200,
+      "raw_summary": "4호선 사당에서 동대문역사문화공원까지 환승 없이 이동"
+    },
+    {
+      "route_id": "mock-konkuk-express-terminal-line7",
+      "origin": "건대입구",
+      "destination": "고속터미널",
+      "stations": ["건대입구", "고속터미널"],
+      "segments": [
+        {
+          "from_station": "건대입구",
+          "to_station": "고속터미널",
+          "line": "7",
+          "transfer": false,
+          "estimated_minutes": 23
+        }
+      ],
+      "transfer_count": 0,
+      "estimated_minutes": 23,
+      "distance_meters": 11800,
+      "raw_summary": "7호선 건대입구에서 고속터미널까지 환승 없이 이동"
+    }
+  ]
+}

@@ -1,0 +1,112 @@
+{
+  "rows": [
+    {
+      "station_name": "홍대입구",
+      "line": "2",
+      "facility_id": "HONG-EV-1",
+      "facility_type": "엘리베이터",
+      "status": "정상",
+      "location": "2호선 대합실-승강장 연결",
+      "inside_gate": true
+    },
+    {
+      "station_name": "홍대입구",
+      "line": "2",
+      "facility_id": "HONG-ES-1",
+      "facility_type": "에스컬레이터",
+      "status": "정상",
+      "location": "2번 출구 방향",
+      "inside_gate": true
+    },
+    {
+      "station_name": "삼성",
+      "line": "2",
+      "facility_id": "SAMS-EV-1",
+      "facility_type": "엘리베이터",
+      "status": "정상",
+      "location": "대합실-승강장 연결",
+      "inside_gate": true
+    },
+    {
+      "station_name": "강남",
+      "line": "2",
+      "facility_id": "GANG-EV-1",
+      "facility_type": "엘리베이터",
+      "status": "정상",
+      "location": "대합실-승강장 연결",
+      "inside_gate": true
+    },
+    {
+      "station_name": "강남",
+      "line": "2",
+      "facility_id": "GANG-ES-1",
+      "facility_type": "에스컬레이터",
+      "status": "정상",
+      "location": "환승 통로",
+      "inside_gate": true
+    },
+    {
+      "station_name": "서울역",
+      "line": "1",
+      "facility_id": "SEOUL-EV-1",
+      "facility_type": "엘리베이터",
+      "status": "정상",
+      "location": "1호선 대합실-승강장 연결",
+      "inside_gate": true
+    },
+    {
+      "station_name": "시청",
+      "line": "1",
+      "facility_id": "CITYHALL-EV-1",
+      "facility_type": "엘리베이터",
+      "status": "정상",
+      "location": "1호선 대합실-승강장 연결",
+      "inside_gate": true
+    },
+    {
+      "station_name": "고속터미널",
+      "line": "9",
+      "facility_id": "EXPRESS-EV-1",
+      "facility_type": "엘리베이터",
+      "status": "정상",
+      "location": "9호선 대합실-승강장 연결",
+      "inside_gate": true
+    },
+    {
+      "station_name": "여의도",
+      "line": "9",
+      "facility_id": "YEOUIDO-EV-1",
+      "facility_type": "엘리베이터",
+      "status": "정상",
+      "location": "9호선 대합실-승강장 연결",
+      "inside_gate": true
+    },
+    {
+      "station_name": "사당",
+      "line": "4",
+      "facility_id": "SADANG-EV-1",
+      "facility_type": "엘리베이터",
+      "status": "정상",
+      "location": "4호선 대합실-승강장 연결",
+      "inside_gate": true
+    },
+    {
+      "station_name": "동대문역사문화공원",
+      "line": "4",
+      "facility_id": "DDP-EV-1",
+      "facility_type": "엘리베이터",
+      "status": "보수중",
+      "location": "4호선 대합실-승강장 연결",
+      "inside_gate": true
+    },
+    {
+      "station_name": "건대입구",
+      "line": "7",
+      "facility_id": "KONKUK-EV-1",
+      "facility_type": "엘리베이터",
+      "status": "정상",
+      "location": "7호선 대합실-승강장 연결",
+      "inside_gate": true
+    }
+  ]
+}

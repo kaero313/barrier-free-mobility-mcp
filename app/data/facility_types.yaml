@@ -1,0 +1,12 @@
+facility_types:
+  elevator:
+    aliases: ["엘리베이터", "승강기", "EV", "E/V"]
+  escalator:
+    aliases: ["에스컬레이터", "ES", "E/S"]
+  accessible_restroom:
+    aliases: ["장애인화장실", "장애인 화장실", "교통약자화장실"]
+  restroom:
+    aliases: ["화장실", "일반화장실"]
+  wheelchair_charger:
+    aliases: ["휠체어충전기", "전동휠체어 충전기"]
+
