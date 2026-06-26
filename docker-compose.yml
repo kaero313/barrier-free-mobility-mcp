@@ -1,0 +1,14 @@
+services:
+  barrier-free-mobility-mcp:
+    build: .
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+
+  redis:
+    image: redis:7-alpine
+    profiles:
+      - redis
+    ports:
+      - "6379:6379"
