@@ -1,0 +1,45 @@
+strict_cases:
+  - name: hongdae_to_samsung_line2_direct
+    origin: "홍대입구"
+    destination: "삼성"
+    expected_transfer_count: 0
+    expected_lines: ["2"]
+    expected_first_station: "홍대입구"
+    expected_last_station: "삼성"
+    required_stations: ["홍대입구", "삼성"]
+    forbidden_transfer_stations: ["이촌", "사당"]
+
+  - name: seoul_to_cityhall_line1_direct
+    origin: "서울역"
+    destination: "시청"
+    expected_transfer_count: 0
+    expected_lines: ["1"]
+    expected_first_station: "서울역"
+    expected_last_station: "시청"
+    required_stations: ["서울역", "시청"]
+
+  - name: express_terminal_to_yeouido_line9_direct
+    origin: "고속터미널"
+    destination: "여의도"
+    expected_transfer_count: 0
+    expected_lines: ["9"]
+    expected_first_station: "고속터미널"
+    expected_last_station: "여의도"
+    required_stations: ["고속터미널", "여의도"]
+
+  - name: sadang_to_ddp_line4_direct
+    origin: "사당"
+    destination: "동대문역사문화공원"
+    expected_transfer_count: 0
+    expected_lines: ["4"]
+    expected_first_station: "사당"
+    expected_last_station: "동대문역사문화공원"
+    required_stations: ["사당", "동대문역사문화공원"]
+
+smoke_cases:
+  - name: konkuk_to_express_terminal_observe
+    origin: "건대입구"
+    destination: "고속터미널"
+    expected_first_station: "건대입구"
+    expected_last_station: "고속터미널"
+    required_stations: ["건대입구", "고속터미널"]

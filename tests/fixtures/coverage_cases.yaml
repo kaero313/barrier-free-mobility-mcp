@@ -1,0 +1,119 @@
+station_cases:
+  - name: exact_single_line
+    query: "강남"
+    expected_station: "강남"
+    expected_line: "2"
+  - name: station_suffix_alias
+    query: "강남역"
+    expected_station: "강남"
+    expected_line: "2"
+  - name: english_line_prefix
+    query: "Line 2 강남"
+    expected_station: "강남"
+    expected_line: "2"
+  - name: korean_line_prefix
+    query: "2호선 삼성"
+    expected_station: "삼성"
+    expected_line: "2"
+  - name: zero_padded_line
+    query: "02호선 삼성"
+    expected_station: "삼성"
+    expected_line: "2"
+  - name: parenthesized_station
+    query: "삼성(무역센터)"
+    expected_station: "삼성"
+    expected_line: "2"
+  - name: common_alias
+    query: "홍대역"
+    expected_station: "홍대입구"
+    expected_line: "2"
+  - name: transfer_requires_clarification
+    query: "고속터미널"
+    needs_clarification: true
+    expected_candidate_count: 3
+  - name: transfer_line_aware
+    query: "7호선 고속터미널"
+    expected_station: "고속터미널"
+    expected_line: "7"
+  - name: transfer_english_line_aware
+    query: "Line 8 잠실"
+    expected_station: "잠실"
+    expected_line: "8"
+  - name: unknown_station
+    query: "없는역"
+    needs_clarification: true
+
+trip_cases:
+  - name: hongdae_to_samsung
+    origin: "홍대입구"
+    destination: "삼성"
+    mobility_profile:
+      wheelchair: true
+      can_use_stairs: false
+      can_use_escalator: false
+      need_elevator_only: true
+      max_transfer_count: 1
+    expected_status: "SUCCESS"
+    expected_risk_level: "LOW"
+  - name: seoul_to_cityhall_line1
+    origin: "1호선 서울역"
+    destination: "1호선 시청"
+    mobility_profile:
+      wheelchair: true
+      can_use_stairs: false
+      can_use_escalator: false
+      need_elevator_only: true
+      max_transfer_count: 1
+    expected_status: "SUCCESS"
+    expected_risk_level: "LOW"
+  - name: express_terminal_to_yeouido_line9
+    origin: "9호선 고속터미널"
+    destination: "9호선 여의도"
+    mobility_profile:
+      wheelchair: true
+      can_use_stairs: false
+      can_use_escalator: false
+      need_elevator_only: true
+      max_transfer_count: 1
+    expected_status: "SUCCESS"
+    expected_risk_level: "LOW"
+  - name: sadang_to_ddp_maintenance
+    origin: "4호선 사당"
+    destination: "4호선 동대문역사문화공원"
+    mobility_profile:
+      wheelchair: true
+      can_use_stairs: false
+      can_use_escalator: false
+      need_elevator_only: true
+      max_transfer_count: 1
+    expected_status: "SUCCESS"
+    expected_risk_level: "CAUTION"
+    expected_risk_reason_codes:
+      - "elevator_unavailable"
+  - name: restroom_required_missing
+    origin: "7호선 건대입구"
+    destination: "7호선 고속터미널"
+    mobility_profile:
+      wheelchair: true
+      can_use_stairs: false
+      can_use_escalator: false
+      need_elevator_only: true
+      need_accessible_restroom: true
+      max_transfer_count: 1
+    expected_status: "SUCCESS"
+    expected_risk_level: "CAUTION"
+    expected_risk_reason_codes:
+      - "elevator_not_found"
+      - "no_accessible_restroom_when_required"
+
+clarification_trip_cases:
+  - name: ambiguous_transfer_origin
+    origin: "고속터미널"
+    destination: "여의도"
+    mobility_profile:
+      wheelchair: true
+      can_use_stairs: false
+      can_use_escalator: false
+      need_elevator_only: true
+    expected_status: "NEEDS_CLARIFICATION"
+    expected_risk_level: "UNKNOWN"
