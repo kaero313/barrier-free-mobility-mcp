@@ -28,6 +28,10 @@ build/
 tmp/
 temp/
 
+# Internal handoff and generated live API samples
+codex_handoff.md
+tests/fixtures/live_samples/
+
 # Editor and OS files
 .DS_Store
 Thumbs.db
