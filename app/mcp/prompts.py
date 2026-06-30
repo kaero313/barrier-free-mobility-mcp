@@ -7,7 +7,11 @@ ANSWER_POLICY_RESOURCE_URI = "barrier-free://answer-policy"
 ANSWER_POLICY_TEXT = "\n".join(
     [
         "Barrier-Free Mobility MCP answer policy:",
-        "- For end-user accessibility answers, call generate_accessibility_brief first.",
+        "- For ordinary Korean end-user questions, call answer_accessibility_question first.",
+        (
+            "- If origin, destination, and mobility_profile are already structured, "
+            "call generate_accessibility_brief."
+        ),
         "- The canonical final answer is the tool result field user_message.",
         "- Return user_message verbatim to the user whenever possible.",
         (

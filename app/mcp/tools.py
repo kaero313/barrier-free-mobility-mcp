@@ -9,7 +9,11 @@ from app.cache.base import CacheProtocol
 from app.cache.factory import build_cache
 from app.core.config import get_settings
 from app.core.metrics import metrics_registry
-from app.schemas.accessibility import AccessibilityResult, MobilityProfile
+from app.schemas.accessibility import (
+    AccessibilityQuestionResult,
+    AccessibilityResult,
+    MobilityProfile,
+)
 from app.schemas.facility import AccessibleFacility
 from app.schemas.route import RouteCandidate
 from app.schemas.station import StationResolutionResult
@@ -38,6 +42,13 @@ TOOL_DESCRIPTIONS = {
         "LLM-facing final-answer tool. Return the result.user_message field verbatim "
         "to the end user whenever possible. Use accessibility_checks, evidence_sources, "
         "failed_sources, and limitations only as supporting evidence."
+    ),
+    "answer_accessibility_question": (
+        "Preferred LLM-facing tool for ordinary Korean natural-language accessibility "
+        "questions. Return the result.user_message field verbatim to the end user "
+        "whenever possible. This deterministic tool handles route accessibility "
+        "questions first and asks for clarification when station names, lines, or "
+        "mobility conditions are missing."
     ),
 }
 
@@ -174,6 +185,15 @@ async def generate_accessibility_brief(
     )
 
 
+async def answer_accessibility_question(question: str) -> AccessibilityQuestionResult:
+    """Final-answer tool for ordinary natural-language accessibility questions."""
+    _validate_text_inputs(question=question)
+    return await _track_tool_call(
+        "answer_accessibility_question",
+        lambda: _get_accessibility_service().answer_accessibility_question(question),
+    )
+
+
 def register_tools(mcp: Any) -> None:
     for tool in (
         resolve_station,
@@ -183,6 +203,7 @@ def register_tools(mcp: Any) -> None:
         get_route_candidates,
         check_accessible_trip,
         generate_accessibility_brief,
+        answer_accessibility_question,
     ):
         mcp.tool(description=TOOL_DESCRIPTIONS.get(tool.__name__))(tool)
 

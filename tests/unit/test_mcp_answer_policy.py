@@ -3,8 +3,8 @@ from __future__ import annotations
 from app.core.config import Settings
 from app.mcp.prompts import ANSWER_POLICY_RESOURCE_URI, accessibility_brief_prompt
 from app.mcp.server import create_mcp_server
-from app.mcp.tools import generate_accessibility_brief
-from app.schemas.accessibility import AccessibilityResult
+from app.mcp.tools import answer_accessibility_question, generate_accessibility_brief
+from app.schemas.accessibility import AccessibilityQuestionResult, AccessibilityResult
 
 
 def test_accessibility_result_schema_marks_user_message_as_canonical_answer() -> None:
@@ -22,11 +22,21 @@ def test_accessibility_result_schema_marks_user_message_as_canonical_answer() ->
     )
 
 
+def test_accessibility_question_result_schema_marks_user_message_as_canonical_answer() -> None:
+    schema = AccessibilityQuestionResult.model_json_schema()
+    properties = schema["properties"]
+
+    assert "Canonical final answer" in properties["user_message"]["description"]
+    assert "display this text verbatim" in properties["user_message"]["description"]
+
+
 def test_answer_policy_prompt_prioritizes_user_message_verbatim() -> None:
     prompt = accessibility_brief_prompt()
 
     assert "user_message" in prompt
     assert "verbatim" in prompt
+    assert "answer_accessibility_question" in prompt
+    assert "generate_accessibility_brief" in prompt
     assert "안전하게 이동 가능합니다" in prompt
     assert "risk_score" in prompt
     assert "기준 시각" in prompt
@@ -38,6 +48,13 @@ def test_generate_accessibility_brief_docstring_mentions_verbatim_user_message()
     assert "Final-answer tool" in docstring
     assert "user_message" in docstring
     assert "verbatim" in docstring
+
+
+def test_answer_accessibility_question_docstring_mentions_final_answer() -> None:
+    docstring = answer_accessibility_question.__doc__ or ""
+
+    assert "Final-answer tool" in docstring
+    assert "natural-language" in docstring
 
 
 async def test_mcp_server_registers_answer_policy_prompt_and_resource() -> None:

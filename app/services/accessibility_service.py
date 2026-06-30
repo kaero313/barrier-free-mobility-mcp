@@ -12,9 +12,12 @@ from app.engine.risk_alignment import align_risk_with_user_judgement
 from app.normalizers.helpers import normalize_station_name
 from app.schemas.accessibility import (
     AccessibilityCheck,
+    AccessibilityQuestionResult,
     AccessibilityResult,
     AlternativeRoute,
     MobilityProfile,
+    ParsedAccessibilityQuestion,
+    QuestionIntent,
     RiskReason,
 )
 from app.schemas.common import DataSourceMeta, FailedSource, ResponseStatus
@@ -22,6 +25,7 @@ from app.schemas.facility import AccessibleFacility, FacilityIssue, FacilityStat
 from app.schemas.route import RouteCandidate
 from app.services.evidence import build_evidence_context
 from app.services.facility_service import FacilityService
+from app.services.question_parser import parse_accessibility_question
 from app.services.route_service import RouteService
 from app.services.station_context import (
     StationLookupContext,
@@ -230,6 +234,43 @@ class AccessibilityService:
         )
         return result.model_copy(update=build_user_message_context(result))
 
+    async def answer_accessibility_question(
+        self,
+        question: str,
+    ) -> AccessibilityQuestionResult:
+        parsed_question = parse_accessibility_question(question)
+        parsed = parsed_question.parsed
+        clarification_reason = self._question_clarification_reason(
+            parsed_question.intent,
+            parsed,
+        )
+        if clarification_reason:
+            return _build_question_clarification_result(
+                question=question,
+                intent=parsed_question.intent,
+                parsed=parsed,
+                reason=clarification_reason,
+            )
+
+        assert parsed.origin is not None
+        assert parsed.destination is not None
+        result = await self.generate_accessibility_brief(
+            parsed.origin,
+            parsed.destination,
+            parsed.mobility_profile,
+        )
+        return AccessibilityQuestionResult(
+            question=question,
+            status=result.status,
+            intent=parsed_question.intent,
+            parsed=parsed,
+            result=result,
+            user_message=result.user_message,
+            clarification_needed=result.clarification_needed,
+            questions=result.questions,
+            available_partial_info=result.available_partial_info,
+        )
+
     async def generate_accessibility_brief(
         self,
         origin: str,
@@ -237,6 +278,24 @@ class AccessibilityService:
         mobility_profile: MobilityProfile,
     ) -> AccessibilityResult:
         return await self.check_accessible_trip(origin, destination, mobility_profile)
+
+    def _question_clarification_reason(
+        self,
+        intent: QuestionIntent,
+        parsed: ParsedAccessibilityQuestion,
+    ) -> str | None:
+        if intent != "trip_accessibility":
+            return "unsupported_intent"
+        if parsed.origin is None or parsed.destination is None:
+            return "missing_station"
+        if "mobility_profile" in parsed.missing_fields:
+            return "missing_mobility_profile"
+
+        origin_context = resolve_station_context(self.station_service, parsed.origin)
+        destination_context = resolve_station_context(self.station_service, parsed.destination)
+        if origin_context.needs_clarification or destination_context.needs_clarification:
+            return "ambiguous_station"
+        return None
 
 
 def _stations_from_routes(routes: list[RouteCandidate]) -> list[str]:
@@ -247,6 +306,166 @@ def _stations_from_routes(routes: list[RouteCandidate]) -> list[str]:
             if station not in stations:
                 stations.append(station)
     return stations
+
+
+def _build_question_clarification_result(
+    *,
+    question: str,
+    intent: QuestionIntent,
+    parsed: ParsedAccessibilityQuestion,
+    reason: str,
+) -> AccessibilityQuestionResult:
+    questions = _question_clarification_questions(reason, parsed)
+    available_partial_info = _question_available_partial_info(reason, parsed)
+    return AccessibilityQuestionResult(
+        question=question,
+        status=ResponseStatus.NEEDS_CLARIFICATION,
+        intent=intent,
+        parsed=parsed.model_copy(
+            update={
+                "missing_fields": _dedupe_strings([*parsed.missing_fields, reason]),
+            }
+        ),
+        result=None,
+        user_message=_question_clarification_message(
+            reason=reason,
+            parsed=parsed,
+            questions=questions,
+            available_partial_info=available_partial_info,
+        ),
+        clarification_needed=True,
+        questions=questions,
+        available_partial_info=available_partial_info,
+    )
+
+
+def _question_clarification_questions(
+    reason: str,
+    parsed: ParsedAccessibilityQuestion,
+) -> list[str]:
+    if reason == "unsupported_intent":
+        return [
+            "출발역과 도착역을 함께 알려 주세요.",
+            "휠체어, 유모차, 계단 이용 불가 등 이동 조건을 알려 주세요.",
+        ]
+    if reason == "missing_mobility_profile":
+        return [
+            "휠체어, 유모차, 보행약자 중 어떤 이동 조건인지 알려 주세요.",
+            "계단이나 에스컬레이터를 사용할 수 있는지도 알려 주세요.",
+        ]
+    if reason == "ambiguous_station":
+        return [
+            "여러 호선이 있는 역은 '9호선 고속터미널'처럼 호선을 함께 알려 주세요.",
+            "출발역과 도착역을 지하철역 이름 기준으로 다시 확인해 주세요.",
+        ]
+    if parsed.station_mentions:
+        return [
+            "출발역과 도착역을 모두 알려 주세요.",
+            "휠체어, 유모차, 계단 이용 불가 등 이동 조건을 함께 알려 주세요.",
+        ]
+    return [
+        "출발역과 도착역을 지하철역 이름 기준으로 알려 주세요.",
+        "휠체어, 유모차, 계단 이용 불가 등 이동 조건을 함께 알려 주세요.",
+    ]
+
+
+def _question_available_partial_info(
+    reason: str,
+    parsed: ParsedAccessibilityQuestion,
+) -> list[str]:
+    partial_info: list[str] = []
+    if parsed.station_mentions:
+        partial_info.append(
+            "확인된 역 후보: " + ", ".join(parsed.station_mentions)
+        )
+    if reason == "unsupported_intent":
+        partial_info.append(
+            "이번 자연어 답변 도구는 경로 접근성 질문을 우선 지원합니다."
+        )
+    if reason == "ambiguous_station":
+        partial_info.append("호선이 확정되면 역별 엘리베이터 정보를 확인할 수 있습니다.")
+    if not partial_info:
+        partial_info.append("역명과 이동 조건이 확정되면 접근성 체크를 제공할 수 있습니다.")
+    return partial_info
+
+
+def _question_clarification_message(
+    *,
+    reason: str,
+    parsed: ParsedAccessibilityQuestion,
+    questions: list[str],
+    available_partial_info: list[str],
+) -> str:
+    station_text = (
+        ", ".join(parsed.station_mentions)
+        if parsed.station_mentions
+        else "확인된 역 없음"
+    )
+    mobility_text = _question_mobility_summary(parsed.mobility_profile)
+    reason_text = _question_reason_text(reason)
+    question_lines = "\n".join(f"- {question}" for question in questions)
+    partial_lines = "\n".join(f"- {info}" for info in available_partial_info)
+    return "\n".join(
+        [
+            "판단: 추가 정보 필요",
+            "질문을 처리하려면 역명이나 이동 조건을 더 확인해야 합니다.",
+            "",
+            "이유",
+            f"- {reason_text}",
+            f"- 현재 확인된 역 후보: {station_text}.",
+            "",
+            "추천 경로",
+            "- 확인 가능한 추천 경로 없음.",
+            "",
+            "접근성 체크",
+            "- 역명과 호선이 확정되면 출발역, 환승역, 도착역 기준으로 확인할 수 있습니다.",
+            "",
+            "사용자 조건 반영",
+            f"- {mobility_text}",
+            "",
+            "기준 시각",
+            "- 공공 API 조회 전입니다. 질문 정보가 확정되면 기준 시각을 포함해 다시 안내합니다.",
+            "",
+            "주의사항",
+            "- 역명과 이동 조건을 확인한 뒤 다시 조회하는 것을 권장합니다.",
+            "- 엘리베이터와 역사 상태는 바뀔 수 있으니 출발 직전 재확인하세요.",
+            "",
+            "확인 질문",
+            question_lines,
+            "",
+            "현재 확인된 정보",
+            partial_lines,
+        ]
+    )
+
+
+def _question_reason_text(reason: str) -> str:
+    if reason == "unsupported_intent":
+        return "시설 단독 질문이나 대안 경로 질문은 아직 자연어 도구에서 직접 판단하지 않습니다."
+    if reason == "missing_mobility_profile":
+        return "이동 조건이 없어 필요한 접근성 기준을 확정하지 못했습니다."
+    if reason == "ambiguous_station":
+        return "호선이 여러 개인 역이 있어 어느 호선 기준인지 확정하지 못했습니다."
+    return "출발역 또는 도착역을 확정하지 못했습니다."
+
+
+def _question_mobility_summary(profile: MobilityProfile) -> str:
+    parts: list[str] = []
+    if profile.wheelchair:
+        parts.append("휠체어 이용 조건을 확인했습니다")
+    if profile.stroller:
+        parts.append("유모차 이용 조건을 확인했습니다")
+    if profile.cane_or_walker:
+        parts.append("보행 보조 조건을 확인했습니다")
+    if not profile.can_use_stairs:
+        parts.append("계단 이용 불가 조건을 확인했습니다")
+    if not profile.can_use_escalator:
+        parts.append("에스컬레이터 이용 불가 조건을 확인했습니다")
+    if profile.need_accessible_restroom:
+        parts.append("장애인화장실 필요 조건을 확인했습니다")
+    if not parts:
+        return "이동 조건이 아직 확인되지 않았습니다."
+    return ", ".join(parts) + "."
 
 
 def _context_for_station(

@@ -29,6 +29,9 @@ async def test_mock_mode_tools_return_structured_models() -> None:
         "삼성",
         MobilityProfile(stroller=True),
     )
+    natural_answer = await tools.answer_accessibility_question(
+        "휠체어로 홍대입구역에서 삼성역까지 갈 수 있어?"
+    )
 
     assert station.matched_station is not None
     assert facilities
@@ -50,6 +53,9 @@ async def test_mock_mode_tools_return_structured_models() -> None:
     assert brief.confidence_level == "MEDIUM"
     assert brief.evidence_sources
     assert brief.origin == "홍대입구"
+    assert natural_answer.status == ResponseStatus.SUCCESS
+    assert natural_answer.result is not None
+    assert natural_answer.user_message == natural_answer.result.user_message
     assert trip.user_message
     assert trip.user_message_summary.headline
     assert trip.accessibility_checks
@@ -157,6 +163,7 @@ def test_register_tools_registers_required_names() -> None:
         "get_route_candidates",
         "check_accessible_trip",
         "generate_accessibility_brief",
+        "answer_accessibility_question",
     }
     assert fake.descriptions == TOOL_DESCRIPTIONS
     assert "user_message" in fake.descriptions["generate_accessibility_brief"]
