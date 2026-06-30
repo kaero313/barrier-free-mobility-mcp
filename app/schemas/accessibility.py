@@ -13,6 +13,12 @@ from app.schemas.route import RouteCandidate
 RiskLevel = Literal["LOW", "CAUTION", "HIGH", "UNKNOWN"]
 ConfidenceLevel = Literal["HIGH", "MEDIUM", "LOW"]
 SourceType = Literal["public_api", "cache", "fixture", "internal"]
+QuestionIntent = Literal[
+    "trip_accessibility",
+    "facility_status",
+    "alternative_request",
+    "unknown",
+]
 
 DEFAULT_SAFETY_NOTICE = (
     "엘리베이터 운행 상태는 바뀔 수 있으니 출발 직전 재확인하세요."
@@ -42,6 +48,14 @@ class MobilityProfile(BaseModel):
     need_wheelchair_charger: bool = False
     avoid_many_transfers: bool = True
     max_transfer_count: int | None = None
+
+
+class ParsedAccessibilityQuestion(BaseModel):
+    origin: str | None = None
+    destination: str | None = None
+    mobility_profile: MobilityProfile = Field(default_factory=MobilityProfile)
+    station_mentions: list[str] = Field(default_factory=list)
+    missing_fields: list[str] = Field(default_factory=list)
 
 
 class RiskReason(BaseModel):
@@ -155,3 +169,21 @@ class AccessibilityResult(BaseModel):
             "or adapt the canonical final answer."
         ),
     )
+
+
+class AccessibilityQuestionResult(BaseModel):
+    question: str
+    status: ResponseStatus
+    intent: QuestionIntent = "unknown"
+    parsed: ParsedAccessibilityQuestion = Field(default_factory=ParsedAccessibilityQuestion)
+    result: AccessibilityResult | None = None
+    user_message: str = Field(
+        default="",
+        description=(
+            "Canonical final answer for ordinary end users. MCP clients and LLM agents "
+            "should display this text verbatim whenever possible."
+        ),
+    )
+    clarification_needed: bool = False
+    questions: list[str] = Field(default_factory=list)
+    available_partial_info: list[str] = Field(default_factory=list)

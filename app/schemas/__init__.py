@@ -2,12 +2,15 @@
 
 from app.schemas.accessibility import (
     AccessibilityCheck,
+    AccessibilityQuestionResult,
     AccessibilityResult,
     AccessibleRestroomRequirement,
     AlternativeRoute,
     ConfidenceLevel,
     EvidenceSource,
     MobilityProfile,
+    ParsedAccessibilityQuestion,
+    QuestionIntent,
     RiskLevel,
     RiskReason,
     UserMessageSummary,
@@ -20,6 +23,7 @@ from app.schemas.station import Station, StationResolutionResult
 __all__ = [
     "AccessibilityResult",
     "AccessibilityCheck",
+    "AccessibilityQuestionResult",
     "AccessibleRestroomRequirement",
     "AccessibleFacility",
     "AlternativeRoute",
@@ -32,6 +36,8 @@ __all__ = [
     "FacilityType",
     "FailedSource",
     "MobilityProfile",
+    "ParsedAccessibilityQuestion",
+    "QuestionIntent",
     "ResponseStatus",
     "RiskLevel",
     "RiskReason",
