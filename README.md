@@ -260,13 +260,15 @@ build context를 줄이는 용도이며, `docker-compose.yml`의 `env_file: .env
 - `get_route_candidates(origin: str, destination: str)`
 - `check_accessible_trip(origin: str, destination: str, mobility_profile: MobilityProfile)`
 - `generate_accessibility_brief(origin: str, destination: str, mobility_profile: MobilityProfile)`
+- `answer_accessibility_question(question: str)`
 
 ### MCP client 답변 정책
 
 이 서버는 앱 화면을 제공하지 않는 MCP 서버입니다. 따라서 일반 사용자에게 보여줄 최종 문장은
 MCP 응답의 `user_message` 필드에 넣어 반환합니다.
 
-- 일반 사용자 답변에는 `generate_accessibility_brief`를 우선 사용합니다.
+- 일반 사용자의 자연어 질문에는 `answer_accessibility_question`을 우선 사용합니다.
+- 출발역, 도착역, 이동 조건이 이미 구조화되어 있으면 `generate_accessibility_brief`를 사용합니다.
 - LLM client는 tool result의 `user_message`를 가능한 한 그대로 표시해야 합니다.
 - `check_accessible_trip`은 구조화 검증, 디버깅, 근거 확인이 필요할 때 사용합니다.
 - `accessibility_checks`, `evidence_sources`, `failed_sources`, `limitations`는 보조 근거입니다.
@@ -296,17 +298,19 @@ tool을 호출하고, MCP 서버는 deterministic 결과를 반환합니다.
 
 대표 질문:
 
-- 강남역 엘베 고장났어?
-- 잠실역 장애인 화장실 어디 있어?
-- 홍대에서 코엑스 가는데 문제 없을까?
 - 휠체어로 홍대입구역에서 삼성역까지 갈 수 있어?
-- 유모차 끌고 서울역에서 잠실역까지 가도 괜찮아?
-- 엘리베이터 고장난 역 피해서 갈 수 있어?
-- 현재 경로에서 승강기 문제 있는 역 있어?
+- 유모차 끌고 1호선 서울역에서 1호선 시청까지 계단 안 써도 돼?
+- 휠체어로 9호선 고속터미널에서 9호선 여의도까지 갈 수 있어?
+- 휠체어로 9호선 고속터미널에서 9호선 여의도 가는데 도착역 장애인화장실 확인이 필요해.
+- 휠체어로 고속터미널에서 여의도까지 갈 수 있어?
 
 이동 조건이나 역명이 부족하면 결과는 `NEEDS_CLARIFICATION`으로 반환되며,
 `clarification_needed`, `questions`, `available_partial_info`에 후속 질문과 가능한 부분 정보를
 담습니다.
+
+1차 자연어 tool은 경로 접근성 질문을 우선 처리합니다. `코엑스` 같은 장소명/POI 해석과
+`강남역 엘베 고장났어?` 같은 시설 단독 질문은 후속 로드맵에서 확장합니다. 현재는 이런 질문에
+대해 추가 정보가 필요하다는 답변을 반환합니다.
 
 ## Sample Tool Input
 
@@ -327,7 +331,9 @@ tool을 호출하고, MCP 서버는 deterministic 결과를 반환합니다.
 
 ## 결과 구조
 
-`check_accessible_trip`은 `AccessibilityResult`를 반환합니다.
+`check_accessible_trip`과 `generate_accessibility_brief`는 `AccessibilityResult`를 반환합니다.
+`answer_accessibility_question`은 `AccessibilityQuestionResult`를 반환하며, 자연어 해석 결과와
+필요 시 내부 `AccessibilityResult`를 `result` 필드에 포함합니다.
 
 주요 필드는 다음과 같습니다.
 
@@ -425,10 +431,12 @@ uv run ruff check .
 uv run python scripts/test_mcp_client.py --tool generate_accessibility_brief --summary-only
 ```
 
-최종 사용자 답변 계약을 확인하려면 `generate_accessibility_brief`를 호출합니다. 이 결과의
+최종 사용자 자연어 답변 계약을 확인하려면 `answer_accessibility_question`을 호출합니다. 구조화
+입력 기반 계약을 확인하려면 `generate_accessibility_brief`를 호출합니다. 두 결과 모두
 `user_message`가 LLM client가 그대로 표시해야 하는 canonical answer입니다.
 
 ```bash
+uv run python scripts/test_mcp_client.py --tool answer_accessibility_question --summary-only
 uv run python scripts/test_mcp_client.py --tool generate_accessibility_brief --summary-only
 ```
 
