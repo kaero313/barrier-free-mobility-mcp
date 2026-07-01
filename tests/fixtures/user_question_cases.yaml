@@ -398,8 +398,8 @@ cases:
       kind: future_natural_language
       target_capability: "answer_accessibility_question"
     expectations:
-      future_reason: "requires_place_resolver"
-      expected_behavior: "코엑스를 삼성역 또는 봉은사역 후보로 안내한다."
+      future_reason: "place_candidate_clarification_supported"
+      expected_behavior: "코엑스를 삼성역 또는 봉은사역 후보로 안내하고 어느 역 기준인지 묻는다."
       contains:
         - "코엑스"
         - "삼성역"
@@ -412,8 +412,8 @@ cases:
       kind: future_natural_language
       target_capability: "answer_accessibility_question"
     expectations:
-      future_reason: "requires_place_resolver"
-      expected_behavior: "홍대입구와 코엑스 주변 후보역을 확인한 뒤 추가 질문하거나 경로를 판단한다."
+      future_reason: "place_candidate_clarification_supported"
+      expected_behavior: "홍대입구는 확정하고 코엑스 주변 후보역을 안내한 뒤 어느 역 기준인지 묻는다."
       contains:
         - "홍대입구"
         - "코엑스"
@@ -425,8 +425,8 @@ cases:
       kind: future_natural_language
       target_capability: "answer_accessibility_question"
     expectations:
-      future_reason: "requires_place_resolver"
-      expected_behavior: "서울역 KTX를 서울역 후보와 연결하고 유모차 조건을 추출한다."
+      future_reason: "place_candidate_clarification_supported"
+      expected_behavior: "서울역 KTX를 1호선/4호선 서울역 후보로 안내하고 어느 호선 기준인지 묻는다."
       contains:
         - "서울역"
         - "잠실"

@@ -114,3 +114,62 @@ def _assert_message_contract(
         assert expected_text in message
     for unexpected_text in expectations["not_contains"]:
         assert unexpected_text not in message
+
+
+@pytest.mark.parametrize(
+    ("question", "expected_texts"),
+    [
+        (
+            "휠체어로 코엑스 갈 수 있어?",
+            ["코엑스", "2호선 삼성역", "9호선 봉은사역", "어느 역을 기준"],
+        ),
+        (
+            "홍대에서 코엑스 가는데 계단 못 써.",
+            ["홍대입구", "코엑스", "2호선 삼성역", "9호선 봉은사역"],
+        ),
+        (
+            "서울역 KTX에서 잠실까지 유모차로 갈만해?",
+            ["서울역 KTX", "1호선 서울역", "4호선 서울역", "잠실"],
+        ),
+        (
+            "DDP까지 휠체어로 갈 수 있어?",
+            [
+                "DDP",
+                "2호선 동대문역사문화공원역",
+                "4호선 동대문역사문화공원역",
+                "5호선 동대문역사문화공원역",
+            ],
+        ),
+    ],
+)
+async def test_natural_language_answer_tool_reports_place_candidates(
+    question: str,
+    expected_texts: list[str],
+) -> None:
+    service = AccessibilityService()
+
+    response = await service.answer_accessibility_question(question)
+
+    assert response.status == ResponseStatus.NEEDS_CLARIFICATION
+    assert response.result is None
+    assert response.clarification_needed is True
+    assert response.questions
+    assert response.parsed.place_mentions
+    assert "판단: 추가 정보 필요" in response.user_message
+    for expected_text in expected_texts:
+        assert expected_text in response.user_message
+    for term in TECHNICAL_TERMS:
+        assert term not in response.user_message
+
+
+async def test_existing_station_based_natural_language_trip_still_succeeds() -> None:
+    service = AccessibilityService()
+
+    response = await service.answer_accessibility_question(
+        "휠체어로 홍대입구역에서 삼성역까지 갈 수 있어?"
+    )
+
+    assert response.status == ResponseStatus.SUCCESS
+    assert response.result is not None
+    assert response.user_message == response.result.user_message
+    assert "판단: 가능" in response.user_message

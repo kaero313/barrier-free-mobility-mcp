@@ -343,6 +343,17 @@ def _question_clarification_questions(
     reason: str,
     parsed: ParsedAccessibilityQuestion,
 ) -> list[str]:
+    place_questions = _place_candidate_questions(parsed)
+    if place_questions:
+        questions = list(place_questions)
+        if parsed.origin is None:
+            questions.append("출발역을 지하철역 이름 기준으로 알려 주세요.")
+        if parsed.destination is None:
+            questions.append("도착역을 지하철역 이름 기준으로 알려 주세요.")
+        if "mobility_profile" in parsed.missing_fields:
+            questions.append("휠체어, 유모차, 계단 이용 불가 등 이동 조건을 알려 주세요.")
+        return _dedupe_strings(questions)
+
     if reason == "unsupported_intent":
         return [
             "출발역과 도착역을 함께 알려 주세요.",
@@ -378,6 +389,8 @@ def _question_available_partial_info(
         partial_info.append(
             "확인된 역 후보: " + ", ".join(parsed.station_mentions)
         )
+    for place_info in _place_candidate_summaries(parsed):
+        partial_info.append(place_info)
     if reason == "unsupported_intent":
         partial_info.append(
             "이번 자연어 답변 도구는 경로 접근성 질문을 우선 지원합니다."
@@ -402,7 +415,7 @@ def _question_clarification_message(
         else "확인된 역 없음"
     )
     mobility_text = _question_mobility_summary(parsed.mobility_profile)
-    reason_text = _question_reason_text(reason)
+    reason_text = _question_reason_text(reason, parsed)
     question_lines = "\n".join(f"- {question}" for question in questions)
     partial_lines = "\n".join(f"- {info}" for info in available_partial_info)
     return "\n".join(
@@ -439,7 +452,9 @@ def _question_clarification_message(
     )
 
 
-def _question_reason_text(reason: str) -> str:
+def _question_reason_text(reason: str, parsed: ParsedAccessibilityQuestion) -> str:
+    if parsed.place_mentions:
+        return "장소명이 여러 역 후보와 연결되어 어느 역 기준인지 확정하지 못했습니다."
     if reason == "unsupported_intent":
         return "시설 단독 질문이나 대안 경로 질문은 아직 자연어 도구에서 직접 판단하지 않습니다."
     if reason == "missing_mobility_profile":
@@ -447,6 +462,44 @@ def _question_reason_text(reason: str) -> str:
     if reason == "ambiguous_station":
         return "호선이 여러 개인 역이 있어 어느 호선 기준인지 확정하지 못했습니다."
     return "출발역 또는 도착역을 확정하지 못했습니다."
+
+
+def _place_candidate_questions(parsed: ParsedAccessibilityQuestion) -> list[str]:
+    questions: list[str] = []
+    for mention in parsed.place_mentions:
+        if not mention.candidates:
+            continue
+        labels = _candidate_labels(mention)
+        if len(mention.candidates) == 1:
+            questions.append(
+                f"{mention.place_name}은 {labels} 기준으로 확인할 수 있습니다. "
+                "이 역 기준으로 확인하면 될까요?"
+            )
+            continue
+        questions.append(
+            f"{mention.place_name}은 {labels} 기준으로 확인할 수 있습니다. "
+            "어느 역을 기준으로 확인할까요?"
+        )
+    return questions
+
+
+def _place_candidate_summaries(parsed: ParsedAccessibilityQuestion) -> list[str]:
+    summaries: list[str] = []
+    for mention in parsed.place_mentions:
+        labels = _candidate_labels(mention)
+        if labels:
+            summaries.append(f"{mention.place_name} 후보: {labels}")
+    return summaries
+
+
+def _candidate_labels(mention: object) -> str:
+    candidates = getattr(mention, "candidates", [])
+    labels = [candidate.label for candidate in candidates]
+    if not labels:
+        return ""
+    if len(labels) == 1:
+        return labels[0]
+    return " 또는 ".join(labels)
 
 
 def _question_mobility_summary(profile: MobilityProfile) -> str:
