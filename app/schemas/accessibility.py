@@ -50,11 +50,26 @@ class MobilityProfile(BaseModel):
     max_transfer_count: int | None = None
 
 
+class PlaceStationCandidate(BaseModel):
+    station_name: str
+    line: str | None = None
+    station_id: str | None = None
+    label: str
+    note: str | None = None
+
+
+class PlaceMention(BaseModel):
+    place_name: str
+    matched_text: str
+    candidates: list[PlaceStationCandidate] = Field(default_factory=list)
+
+
 class ParsedAccessibilityQuestion(BaseModel):
     origin: str | None = None
     destination: str | None = None
     mobility_profile: MobilityProfile = Field(default_factory=MobilityProfile)
     station_mentions: list[str] = Field(default_factory=list)
+    place_mentions: list[PlaceMention] = Field(default_factory=list)
     missing_fields: list[str] = Field(default_factory=list)
 
 
