@@ -9,7 +9,14 @@ from app.schemas.accessibility import (
     AccessibleRestroomRequirement,
     MobilityProfile,
     ParsedAccessibilityQuestion,
+    PlaceStationCandidate,
     QuestionIntent,
+)
+from app.services.place_resolver import (
+    ResolvedPlaceMention,
+    compact_text,
+    overlaps,
+    resolve_place_mentions,
 )
 
 LINE_PATTERN = re.compile(
@@ -37,15 +44,31 @@ class StationMention:
         return f"{self.line}호선 {self.station_name}" if self.line else self.station_name
 
 
-def parse_accessibility_question(question: str) -> AccessibilityQuestionParse:
-    mentions = _extract_station_mentions(question)
-    profile, has_mobility_signal = _parse_mobility_profile(question)
-    intent = _detect_intent(question, mentions)
-    station_mentions = [mention.query for mention in mentions]
-    missing_fields = _missing_fields(intent, mentions, has_mobility_signal)
+@dataclass(frozen=True)
+class RouteMention:
+    start: int
+    end: int
+    query: str | None
 
-    origin = mentions[0].query if len(mentions) == 2 else None
-    destination = mentions[1].query if len(mentions) == 2 else None
+
+def parse_accessibility_question(question: str) -> AccessibilityQuestionParse:
+    station_mentions = _extract_station_mentions(question)
+    place_mentions = resolve_place_mentions(question)
+    route_mentions = _route_mentions(station_mentions, place_mentions)
+    profile, has_mobility_signal = _parse_mobility_profile(question)
+    intent = _detect_intent(question, route_mentions)
+    station_mention_texts = [
+        mention.query for mention in route_mentions if mention.query is not None
+    ]
+
+    origin = route_mentions[0].query if len(route_mentions) == 2 else None
+    destination = route_mentions[1].query if len(route_mentions) == 2 else None
+    missing_fields = _missing_fields(
+        intent,
+        origin,
+        destination,
+        has_mobility_signal,
+    )
 
     return AccessibilityQuestionParse(
         intent=intent,
@@ -53,7 +76,11 @@ def parse_accessibility_question(question: str) -> AccessibilityQuestionParse:
             origin=origin,
             destination=destination,
             mobility_profile=profile,
-            station_mentions=station_mentions,
+            station_mentions=station_mention_texts,
+            place_mentions=[
+                place.mention
+                for place in _place_mentions_for_context(station_mentions, place_mentions)
+            ],
             missing_fields=missing_fields,
         ),
     )
@@ -84,7 +111,7 @@ def _extract_station_mentions(question: str) -> list[StationMention]:
     occupied: list[range] = []
     for candidate in sorted(candidates, key=lambda item: (item.start, -(item.end - item.start))):
         candidate_range = range(candidate.start, candidate.end)
-        if any(_overlaps(candidate_range, used) for used in occupied):
+        if any(overlaps(candidate_range, used) for used in occupied):
             continue
         if any(existing.station_name == candidate.station_name for existing in selected):
             continue
@@ -101,6 +128,66 @@ def _station_terms() -> list[tuple[str, str]]:
             if term:
                 terms.add((term, station.station_name))
     return sorted(terms, key=lambda item: len(_compact(item[0])), reverse=True)
+
+
+def _route_mentions(
+    station_mentions: list[StationMention],
+    place_mentions: list[ResolvedPlaceMention],
+) -> list[RouteMention]:
+    route_mentions = [
+        RouteMention(
+            start=mention.start,
+            end=mention.end,
+            query=mention.query,
+        )
+        for mention in station_mentions
+    ]
+    occupied = [range(mention.start, mention.end) for mention in station_mentions]
+
+    for place in place_mentions:
+        place_range = range(place.start, place.end)
+        if any(overlaps(place_range, used) for used in occupied):
+            continue
+        candidates = place.mention.candidates
+        route_mentions.append(
+            RouteMention(
+                start=place.start,
+                end=place.end,
+                query=_candidate_query(candidates[0]) if len(candidates) == 1 else None,
+            )
+        )
+        occupied.append(place_range)
+
+    return sorted(route_mentions, key=lambda item: item.start)
+
+
+def _place_mentions_for_context(
+    station_mentions: list[StationMention],
+    place_mentions: list[ResolvedPlaceMention],
+) -> list[ResolvedPlaceMention]:
+    station_ranges = [range(mention.start, mention.end) for mention in station_mentions]
+    contextual: list[ResolvedPlaceMention] = []
+    for place in place_mentions:
+        place_range = range(place.start, place.end)
+        overlapping = [
+            station_range
+            for station_range in station_ranges
+            if overlaps(place_range, station_range)
+        ]
+        if not overlapping:
+            contextual.append(place)
+            continue
+        if any((place.end - place.start) > (item.stop - item.start) for item in overlapping):
+            contextual.append(place)
+    return contextual
+
+
+def _candidate_query(candidate: PlaceStationCandidate) -> str:
+    return (
+        f"{candidate.line}호선 {candidate.station_name}"
+        if candidate.line
+        else candidate.station_name
+    )
 
 
 def _line_from_term_or_context(term: str, compact_prefix: str) -> str | None:
@@ -184,7 +271,7 @@ def _restroom_requirement(question: str) -> AccessibleRestroomRequirement:
     return AccessibleRestroomRequirement.ALL_KEY_STATIONS
 
 
-def _detect_intent(question: str, mentions: list[StationMention]) -> QuestionIntent:
+def _detect_intent(question: str, mentions: list[RouteMention]) -> QuestionIntent:
     if len(mentions) >= 2:
         return "trip_accessibility"
     if _contains_any(question, "대안", "피해서", "다른 경로", "환승 적은"):
@@ -198,13 +285,16 @@ def _detect_intent(question: str, mentions: list[StationMention]) -> QuestionInt
 
 def _missing_fields(
     intent: QuestionIntent,
-    mentions: list[StationMention],
+    origin: str | None,
+    destination: str | None,
     has_mobility_signal: bool,
 ) -> list[str]:
     missing: list[str] = []
     if intent == "trip_accessibility":
-        if len(mentions) != 2:
-            missing.extend(["origin", "destination"])
+        if origin is None:
+            missing.append("origin")
+        if destination is None:
+            missing.append("destination")
         if not has_mobility_signal:
             missing.append("mobility_profile")
     elif intent in {"facility_status", "alternative_request"}:
@@ -215,17 +305,11 @@ def _missing_fields(
 
 
 def _compact(value: str) -> str:
-    value = re.sub(r"\([^)]*\)", "", value)
-    value = re.sub(r"（[^）]*）", "", value)
-    return re.sub(r"\s+", "", value).lower()
+    return compact_text(value)
 
 
 def _contains_any(value: str, *needles: str) -> bool:
     return any(needle in value for needle in needles)
-
-
-def _overlaps(left: range, right: range) -> bool:
-    return left.start < right.stop and right.start < left.stop
 
 
 def _dedupe(values: list[str]) -> list[str]:

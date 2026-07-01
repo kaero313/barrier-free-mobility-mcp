@@ -72,6 +72,8 @@ def test_parser_marks_place_name_without_station_as_missing_route_fields() -> No
     assert parsed.parsed.origin is None
     assert parsed.parsed.destination is None
     assert parsed.parsed.station_mentions == []
+    assert len(parsed.parsed.place_mentions) == 1
+    assert parsed.parsed.place_mentions[0].place_name == "코엑스"
     assert "origin" in parsed.parsed.missing_fields
     assert "destination" in parsed.parsed.missing_fields
 
@@ -82,3 +84,23 @@ def test_parser_classifies_facility_question_as_unsupported_intent() -> None:
     assert parsed.intent == "facility_status"
     assert parsed.parsed.station_mentions == ["강남"]
     assert "supported_intent" in parsed.parsed.missing_fields
+
+
+def test_parser_uses_station_mention_before_same_range_place_alias() -> None:
+    parsed = parse_accessibility_question("홍대에서 코엑스 가는데 계단 못 써.")
+
+    assert parsed.intent == "trip_accessibility"
+    assert parsed.parsed.origin == "홍대입구"
+    assert parsed.parsed.destination is None
+    assert parsed.parsed.station_mentions == ["홍대입구"]
+    assert [mention.place_name for mention in parsed.parsed.place_mentions] == ["코엑스"]
+
+
+def test_parser_keeps_longer_place_context_for_overlapping_station_alias() -> None:
+    parsed = parse_accessibility_question("서울역 KTX에서 잠실까지 유모차로 갈만해?")
+
+    assert parsed.intent == "trip_accessibility"
+    assert parsed.parsed.origin == "서울역"
+    assert parsed.parsed.destination == "잠실"
+    assert parsed.parsed.station_mentions == ["서울역", "잠실"]
+    assert [mention.place_name for mention in parsed.parsed.place_mentions] == ["서울역 KTX"]
