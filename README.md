@@ -455,6 +455,19 @@ uv run python scripts/test_mcp_client.py --case-set coverage
 uv run python scripts/test_mcp_client.py --case-set coverage --api-key "긴-랜덤-문자열"
 ```
 
+실제 공공 API 기준의 답변 품질을 한 번에 점검하려면 live 품질 평가 스크립트를 실행합니다.
+이 명령은 MCP 서버를 따로 켜지 않고 내부 service를 `APP_MODE=live`로 실행합니다. API key,
+endpoint URL, raw request parameter는 출력하지 않고, 케이스별 상태, 판단 문구, 지연 시간,
+payload 크기, 실패 source 수, 미확인 정보 수, 기준 시각 포함 여부만 요약합니다.
+
+```bash
+uv run python scripts/evaluate_live_quality.py --case-set basic
+uv run python scripts/evaluate_live_quality.py --case-set all --limit 10
+uv run python scripts/evaluate_live_quality.py --category trip_accessibility --json
+```
+
+품질 이슈를 CI나 배포 전 수동 점검에서 실패로 보고 싶으면 `--strict`를 추가합니다.
+
 현재 테스트는 다음 범위를 검증합니다.
 
 - station normalization

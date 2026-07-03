@@ -20,39 +20,12 @@ Bearer 인증, health/metrics, 운영 cache까지 동작한다. 따라서 제한
 
 ## 우선순위
 
-1. live 품질 평가 스크립트 추가
-2. 역별 접근성 근거 세분화
-3. hosted 운영 모드 설계와 배포 가이드
-4. OAuth/OIDC gateway 전환
-5. 실제 사용자 피드백 기반 문장 개선
+1. 역별 접근성 근거 세분화
+2. hosted 운영 모드 설계와 배포 가이드
+3. OAuth/OIDC gateway 전환
+4. 실제 사용자 피드백 기반 문장 개선
 
-## 1. live 품질 평가 스크립트 추가
-
-목표: live 공공 API 결과가 실제 사용자 답변 품질에 어떤 영향을 주는지 정량적으로 확인한다.
-
-신규 스크립트 후보:
-
-```text
-scripts/evaluate_live_quality.py
-```
-
-구현 범위:
-
-- `user_question_cases.yaml` 또는 별도 live case set을 순회한다.
-- 각 케이스별 status, risk_level, 판단 문구, latency, payload size, failed_sources,
-  unverified_parts, 기준 시각 포함 여부를 요약 출력한다.
-- API key, endpoint URL, raw request parameter는 출력하지 않는다.
-- 결과는 CI 기본 테스트가 아니라 수동 smoke로 유지한다.
-
-완료 기준:
-
-- live mode에서 여러 질문의 성공/부분 실패/실패 패턴을 한 번에 볼 수 있다.
-- latency와 미확인 정보가 눈에 보인다.
-- 공개 전 품질 리포트로 사용할 수 있다.
-
-상태: 예정.
-
-## 2. 역별 접근성 근거 세분화
+## 1. 역별 접근성 근거 세분화
 
 목표: "역에 엘리베이터가 있음"과 "이 이동 조건에 필요한 동선의 엘리베이터가 확인됨"을 구분한다.
 
@@ -76,7 +49,7 @@ scripts/evaluate_live_quality.py
 
 상태: 예정.
 
-## 3. hosted 운영 모드 설계와 배포 가이드
+## 2. hosted 운영 모드 설계와 배포 가이드
 
 목표: 일반 사용자가 API key 없이 GPT/Claude 등에서 MCP를 연결해 사용할 수 있는 운영 방식을 정리한다.
 
@@ -101,7 +74,7 @@ scripts/evaluate_live_quality.py
 
 상태: 예정.
 
-## 4. OAuth/OIDC gateway 전환
+## 3. OAuth/OIDC gateway 전환
 
 목표: static Bearer 인증을 외부 테스트용으로 유지하되, 공개 운영 전 사용자 단위 인증과 abuse 방어를 설계한다.
 
@@ -120,7 +93,7 @@ scripts/evaluate_live_quality.py
 
 상태: 후속 상용화 작업.
 
-## 5. 실제 사용자 피드백 기반 문장 개선
+## 4. 실제 사용자 피드백 기반 문장 개선
 
 목표: 현재 템플릿이 실제 장애인, 유모차 이용자, 계단 이용이 어려운 사용자에게 이해하기 쉬운지 검증한다.
 
