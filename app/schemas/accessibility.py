@@ -34,6 +34,13 @@ class AccessibleRestroomRequirement(StrEnum):
     ALL_KEY_STATIONS = "all_key_stations"
 
 
+class AccessibilityEvidenceStatus(StrEnum):
+    CONFIRMED = "CONFIRMED"
+    UNVERIFIED = "UNVERIFIED"
+    NOT_APPLICABLE = "NOT_APPLICABLE"
+    FAILED = "FAILED"
+
+
 class MobilityProfile(BaseModel):
     wheelchair: bool = False
     stroller: bool = False
@@ -120,6 +127,22 @@ class AccessibilityCheck(BaseModel):
     role: Literal["origin", "transfer", "destination"]
     elevator_status: FacilityStatus = FacilityStatus.UNKNOWN
     elevator_location: str | None = None
+    station_has_elevator: AccessibilityEvidenceStatus = (
+        AccessibilityEvidenceStatus.UNVERIFIED
+    )
+    line_matched_elevator: AccessibilityEvidenceStatus = (
+        AccessibilityEvidenceStatus.UNVERIFIED
+    )
+    platform_to_concourse_verified: AccessibilityEvidenceStatus = (
+        AccessibilityEvidenceStatus.UNVERIFIED
+    )
+    transfer_path_elevator_verified: AccessibilityEvidenceStatus = (
+        AccessibilityEvidenceStatus.NOT_APPLICABLE
+    )
+    exit_elevator_verified: AccessibilityEvidenceStatus = (
+        AccessibilityEvidenceStatus.UNVERIFIED
+    )
+    status_verified: AccessibilityEvidenceStatus = AccessibilityEvidenceStatus.UNVERIFIED
     restroom_available: bool | None = None
     restroom_required: bool | None = None
     notes: list[str] = Field(default_factory=list)

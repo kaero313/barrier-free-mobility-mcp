@@ -2,6 +2,7 @@
 
 from app.schemas.accessibility import (
     AccessibilityCheck,
+    AccessibilityEvidenceStatus,
     AccessibilityQuestionResult,
     AccessibilityResult,
     AccessibleRestroomRequirement,
@@ -25,6 +26,7 @@ from app.schemas.station import Station, StationResolutionResult
 __all__ = [
     "AccessibilityResult",
     "AccessibilityCheck",
+    "AccessibilityEvidenceStatus",
     "AccessibilityQuestionResult",
     "AccessibleRestroomRequirement",
     "AccessibleFacility",
