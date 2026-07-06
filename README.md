@@ -353,6 +353,8 @@ tool을 호출하고, MCP 서버는 deterministic 결과를 반환합니다.
 - `evidence_sources`: 사용한 API/fixture/cache 출처 요약
 - `unverified_parts`: 실패, 오래된 캐시, mock fixture 등 확인하지 못한 부분
 - `accessibility_checks`: 출발역, 환승역, 도착역 기준 엘리베이터 상태/위치와 화장실 여부
+- `accessibility_checks.*_verified`: 엘리베이터 설치, 호선 일치, 운행상태, 승강장-대합실,
+  환승, 출구 동선 근거. `CONFIRMED`, `UNVERIFIED`, `NOT_APPLICABLE`, `FAILED` 중 하나입니다.
 - `clarification_needed`: 짧거나 모호한 질문이라 추가 확인이 필요한지 여부
 - `questions`: LLM agent가 사용자에게 물어볼 후속 질문
 - `available_partial_info`: 추가 정보 없이도 안내 가능한 부분 정보
