@@ -6,6 +6,7 @@ import pytest
 
 from app.schemas.accessibility import (
     AccessibilityCheck,
+    AccessibilityEvidenceStatus,
     AccessibilityResult,
     MobilityProfile,
     RiskReason,
@@ -86,23 +87,38 @@ def test_user_message_prioritizes_structured_accessibility_checks() -> None:
     result.accessibility_checks = [
         AccessibilityCheck(
             station="홍대입구",
+            line="2",
             role="origin",
             elevator_status=FacilityStatus.AVAILABLE,
             elevator_location="8번 출입구",
+            station_has_elevator=AccessibilityEvidenceStatus.CONFIRMED,
+            line_matched_elevator=AccessibilityEvidenceStatus.CONFIRMED,
+            platform_to_concourse_verified=AccessibilityEvidenceStatus.CONFIRMED,
+            exit_elevator_verified=AccessibilityEvidenceStatus.CONFIRMED,
+            status_verified=AccessibilityEvidenceStatus.CONFIRMED,
         ),
         AccessibilityCheck(
             station="삼성",
+            line="2",
             role="destination",
             elevator_status=FacilityStatus.AVAILABLE,
             elevator_location="6번 출입구",
+            station_has_elevator=AccessibilityEvidenceStatus.CONFIRMED,
+            line_matched_elevator=AccessibilityEvidenceStatus.CONFIRMED,
+            platform_to_concourse_verified=AccessibilityEvidenceStatus.CONFIRMED,
+            exit_elevator_verified=AccessibilityEvidenceStatus.CONFIRMED,
+            status_verified=AccessibilityEvidenceStatus.CONFIRMED,
         ),
     ]
 
     message = build_user_message_context(result)["user_message"]
 
     assert "판단: 가능" in message
-    assert "출발역 홍대입구: 엘리베이터 확인(8번 출입구)" in message
-    assert "도착역 삼성: 엘리베이터 확인(6번 출입구)" in message
+    assert "출발역 홍대입구: 엘리베이터 위치 확인(8번 출입구)" in message
+    assert "호선 일치 확인" in message
+    assert "운행상태 확인" in message
+    assert "승강장-대합실 동선 확인" in message
+    assert "도착역 삼성: 엘리베이터 위치 확인(6번 출입구)" in message
     assert "추천 경로\n- 홍대입구역 → 삼성역" in message
 
 
@@ -181,6 +197,10 @@ def test_restroom_missing_downgrades_user_judgement_to_caution() -> None:
             station="홍대입구",
             role="origin",
             elevator_status=FacilityStatus.AVAILABLE,
+            station_has_elevator=AccessibilityEvidenceStatus.CONFIRMED,
+            platform_to_concourse_verified=AccessibilityEvidenceStatus.CONFIRMED,
+            exit_elevator_verified=AccessibilityEvidenceStatus.CONFIRMED,
+            status_verified=AccessibilityEvidenceStatus.CONFIRMED,
             restroom_available=False,
             restroom_required=True,
         ),
@@ -188,6 +208,10 @@ def test_restroom_missing_downgrades_user_judgement_to_caution() -> None:
             station="삼성",
             role="destination",
             elevator_status=FacilityStatus.AVAILABLE,
+            station_has_elevator=AccessibilityEvidenceStatus.CONFIRMED,
+            platform_to_concourse_verified=AccessibilityEvidenceStatus.CONFIRMED,
+            exit_elevator_verified=AccessibilityEvidenceStatus.CONFIRMED,
+            status_verified=AccessibilityEvidenceStatus.CONFIRMED,
             restroom_available=True,
             restroom_required=True,
         ),
@@ -197,8 +221,10 @@ def test_restroom_missing_downgrades_user_judgement_to_caution() -> None:
 
     assert "판단: 주의 필요" in message
     assert "장애인화장실 미확인 역: 홍대입구" in message
-    assert "출발역 홍대입구: 엘리베이터 확인 / 장애인화장실 미확인(필수)" in message
-    assert "도착역 삼성: 엘리베이터 확인 / 장애인화장실 있음(필수)" in message
+    assert "출발역 홍대입구: 엘리베이터 위치 확인" in message
+    assert "장애인화장실 미확인(필수)" in message
+    assert "도착역 삼성: 엘리베이터 위치 확인" in message
+    assert "장애인화장실 있음(필수)" in message
 
 
 def test_unknown_elevator_downgrades_user_judgement_to_caution() -> None:
@@ -219,8 +245,9 @@ def test_unknown_elevator_downgrades_user_judgement_to_caution() -> None:
     message = build_user_message_context(result)["user_message"]
 
     assert "판단: 주의 필요" in message
-    assert "엘리베이터 상태 미확인 역: 홍대입구" in message
-    assert "출발역 홍대입구: 엘리베이터 미확인" in message
+    assert "엘리베이터 동선 또는 상태 미확인 역: 홍대입구" in message
+    assert "출발역 홍대입구: 엘리베이터 위치 미확인" in message
+    assert "운행상태 미확인" in message
 
 
 def test_transfer_condition_reason_downgrades_user_judgement_to_caution() -> None:

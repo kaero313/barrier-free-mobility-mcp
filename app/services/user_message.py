@@ -4,6 +4,8 @@ from datetime import datetime, timedelta, timezone
 
 from app.schemas.accessibility import (
     DEFAULT_SAFETY_NOTICE,
+    AccessibilityCheck,
+    AccessibilityEvidenceStatus,
     AccessibilityResult,
     AccessibleRestroomRequirement,
     MobilityProfile,
@@ -301,9 +303,10 @@ def _reasons(result: AccessibilityResult) -> list[str]:
             check
             for check in result.accessibility_checks
             if check.elevator_status == FacilityStatus.UNKNOWN
+            or _has_unverified_elevator_evidence(check)
         ]
         if available_checks:
-            reasons.append("출발역, 환승역 또는 도착역의 엘리베이터 정보가 확인되었습니다.")
+            reasons.append("출발역, 환승역 또는 도착역의 엘리베이터 위치 정보가 확인되었습니다.")
         if restricted_checks:
             restricted_stations = _format_station_list(
                 [check.station for check in restricted_checks]
@@ -313,7 +316,7 @@ def _reasons(result: AccessibilityResult) -> list[str]:
             )
         if unknown_checks:
             unknown_stations = _format_station_list([check.station for check in unknown_checks])
-            reasons.append(f"엘리베이터 상태 미확인 역: {unknown_stations}")
+            reasons.append(f"엘리베이터 동선 또는 상태 미확인 역: {unknown_stations}")
         missing_restroom_stations = _restroom_missing_station_names(result)
         if missing_restroom_stations:
             reasons.append(
@@ -456,9 +459,7 @@ def _accessibility_check_points(result: AccessibilityResult) -> list[str]:
     points: list[str] = []
     for check in result.accessibility_checks:
         parts = [f"{_role_label(check.role)} {check.station}: "]
-        details = [f"엘리베이터 {_status_label(check.elevator_status)}"]
-        if check.elevator_location:
-            details[-1] += f"({check.elevator_location})"
+        details = _elevator_evidence_details(check)
         if check.restroom_available is True:
             restroom_detail = "장애인화장실 있음"
             if check.restroom_required is True:
@@ -482,6 +483,56 @@ def _accessibility_check_points(result: AccessibilityResult) -> list[str]:
         points.append("일부 공공 정보가 확인되지 않아 현장 확인이 필요합니다.")
 
     return _dedupe_strings(points)
+
+
+def _elevator_evidence_details(check: AccessibilityCheck) -> list[str]:
+    details: list[str] = []
+    if check.station_has_elevator == AccessibilityEvidenceStatus.CONFIRMED:
+        detail = "엘리베이터 위치 확인"
+        if check.elevator_location:
+            detail += f"({check.elevator_location})"
+        details.append(detail)
+    elif check.station_has_elevator == AccessibilityEvidenceStatus.FAILED:
+        details.append("엘리베이터 정보 없음")
+    else:
+        details.append("엘리베이터 위치 미확인")
+
+    if check.line is not None:
+        details.append("호선 일치 " + _evidence_label(check.line_matched_elevator))
+
+    details.append("운행상태 " + _status_evidence_label(check))
+
+    if check.platform_to_concourse_verified != AccessibilityEvidenceStatus.NOT_APPLICABLE:
+        details.append(
+            "승강장-대합실 동선 "
+            + _evidence_label(check.platform_to_concourse_verified)
+        )
+
+    if check.transfer_path_elevator_verified != AccessibilityEvidenceStatus.NOT_APPLICABLE:
+        details.append(
+            "환승 동선 "
+            + _evidence_label(check.transfer_path_elevator_verified)
+        )
+
+    if check.exit_elevator_verified != AccessibilityEvidenceStatus.NOT_APPLICABLE:
+        details.append("출구 동선 " + _evidence_label(check.exit_elevator_verified))
+    return details
+
+
+def _evidence_label(status: AccessibilityEvidenceStatus) -> str:
+    if status == AccessibilityEvidenceStatus.CONFIRMED:
+        return "확인"
+    if status == AccessibilityEvidenceStatus.FAILED:
+        return "확인 실패"
+    if status == AccessibilityEvidenceStatus.NOT_APPLICABLE:
+        return "요구 대상 아님"
+    return "미확인"
+
+
+def _status_evidence_label(check: AccessibilityCheck) -> str:
+    if check.status_verified == AccessibilityEvidenceStatus.CONFIRMED:
+        return _status_label(check.elevator_status)
+    return _evidence_label(check.status_verified)
 
 
 def _role_label(role: str) -> str:
@@ -562,10 +613,31 @@ def _has_critical_source_failure(result: AccessibilityResult) -> bool:
 
 def _has_unverified_required_condition(result: AccessibilityResult) -> bool:
     if _requires_elevator_for_message(result.mobility_profile) and any(
-        check.elevator_status == FacilityStatus.UNKNOWN for check in result.accessibility_checks
+        _has_unverified_elevator_evidence(check) for check in result.accessibility_checks
     ):
         return True
     return bool(_restroom_missing_station_names(result))
+
+
+def _has_unverified_elevator_evidence(check: AccessibilityCheck) -> bool:
+    unverified_values = {
+        AccessibilityEvidenceStatus.UNVERIFIED,
+        AccessibilityEvidenceStatus.FAILED,
+    }
+    required_fields = [
+        check.station_has_elevator,
+        check.line_matched_elevator,
+        check.platform_to_concourse_verified,
+        check.status_verified,
+    ]
+    if check.role in {"origin", "destination"}:
+        required_fields.append(check.exit_elevator_verified)
+    if check.role == "transfer":
+        required_fields.append(check.transfer_path_elevator_verified)
+    return (
+        check.elevator_status == FacilityStatus.UNKNOWN
+        or any(value in unverified_values for value in required_fields)
+    )
 
 
 def _has_caution_reason(result: AccessibilityResult) -> bool:
