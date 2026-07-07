@@ -3,7 +3,12 @@ from __future__ import annotations
 import pytest
 
 from app.engine.risk_alignment import align_risk_with_user_judgement
-from app.schemas.accessibility import AccessibilityCheck, MobilityProfile, RiskReason
+from app.schemas.accessibility import (
+    AccessibilityCheck,
+    AccessibilityEvidenceStatus,
+    MobilityProfile,
+    RiskReason,
+)
 from app.schemas.common import FailedSource, ResponseStatus
 from app.schemas.facility import FacilityStatus
 
@@ -77,6 +82,32 @@ def test_restroom_missing_check_applies_caution_floor_when_required() -> None:
             )
         ],
         mobility_profile=MobilityProfile(need_accessible_restroom=True),
+        status=ResponseStatus.SUCCESS,
+    )
+
+    assert aligned.risk_level == "CAUTION"
+    assert aligned.risk_score == 35
+
+
+def test_unverified_required_path_evidence_applies_caution_floor() -> None:
+    aligned = align_risk_with_user_judgement(
+        risk_score=0,
+        risk_level="LOW",
+        risk_reasons=[],
+        failed_sources=[],
+        accessibility_checks=[
+            AccessibilityCheck(
+                station="삼성",
+                role="destination",
+                elevator_status=FacilityStatus.AVAILABLE,
+                station_has_elevator=AccessibilityEvidenceStatus.CONFIRMED,
+                line_matched_elevator=AccessibilityEvidenceStatus.CONFIRMED,
+                platform_to_concourse_verified=AccessibilityEvidenceStatus.UNVERIFIED,
+                exit_elevator_verified=AccessibilityEvidenceStatus.CONFIRMED,
+                status_verified=AccessibilityEvidenceStatus.CONFIRMED,
+            )
+        ],
+        mobility_profile=MobilityProfile(wheelchair=True),
         status=ResponseStatus.SUCCESS,
     )
 

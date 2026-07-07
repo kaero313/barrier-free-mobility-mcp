@@ -6,6 +6,7 @@ from app.engine.mobility_profile import requires_elevator
 from app.engine.risk_scoring import calculate_risk_level, clamp_score
 from app.schemas.accessibility import (
     AccessibilityCheck,
+    AccessibilityEvidenceStatus,
     MobilityProfile,
     RiskLevel,
     RiskReason,
@@ -74,7 +75,8 @@ def _requires_caution_floor(
         return True
 
     if requires_elevator(mobility_profile) and any(
-        check.elevator_status == FacilityStatus.UNKNOWN for check in accessibility_checks
+        _has_unverified_required_elevator_evidence(check)
+        for check in accessibility_checks
     ):
         return True
 
@@ -85,6 +87,26 @@ def _requires_caution_floor(
             for check in accessibility_checks
         )
     )
+
+
+def _has_unverified_required_elevator_evidence(check: AccessibilityCheck) -> bool:
+    unverified_values = {
+        AccessibilityEvidenceStatus.UNVERIFIED,
+        AccessibilityEvidenceStatus.FAILED,
+    }
+    required_fields = [
+        check.station_has_elevator,
+        check.line_matched_elevator,
+        check.platform_to_concourse_verified,
+        check.status_verified,
+    ]
+    if check.role in {"origin", "destination"}:
+        required_fields.append(check.exit_elevator_verified)
+    if check.role == "transfer":
+        required_fields.append(check.transfer_path_elevator_verified)
+    if check.elevator_status == FacilityStatus.UNKNOWN:
+        return True
+    return any(value in unverified_values for value in required_fields)
 
 
 def _max_risk_level(left: RiskLevel, right: RiskLevel) -> RiskLevel:
