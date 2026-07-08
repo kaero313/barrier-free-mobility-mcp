@@ -1,0 +1,110 @@
+services:
+  barrier-free-mobility-mcp:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    image: barrier-free-mobility-mcp:hosted
+    restart: unless-stopped
+    environment:
+      APP_ENV: ${APP_ENV:-production}
+      APP_MODE: ${APP_MODE:-live}
+      MCP_SERVER_NAME: ${MCP_SERVER_NAME:-Barrier-Free Mobility MCP}
+      MCP_TRANSPORT: ${MCP_TRANSPORT:-streamable-http}
+      MCP_HOST: 0.0.0.0
+      MCP_PORT: 8000
+      MCP_PATH: ${MCP_PATH:-/mcp}
+      MCP_AUTH_ENABLED: ${MCP_AUTH_ENABLED:-true}
+      MCP_API_KEY: ${MCP_API_KEY:-<long-random-token>}
+      MCP_PUBLIC_BASE_URL: ${MCP_PUBLIC_BASE_URL:-https://mcp.example.com}
+      MCP_REQUEST_BODY_LIMIT_ENABLED: ${MCP_REQUEST_BODY_LIMIT_ENABLED:-true}
+      MCP_MAX_REQUEST_BODY_BYTES: ${MCP_MAX_REQUEST_BODY_BYTES:-1048576}
+      MCP_TOOL_INPUT_MAX_CHARS: ${MCP_TOOL_INPUT_MAX_CHARS:-120}
+      MCP_RATE_LIMIT_ENABLED: ${MCP_RATE_LIMIT_ENABLED:-true}
+      MCP_RATE_LIMIT_PER_MINUTE: ${MCP_RATE_LIMIT_PER_MINUTE:-60}
+      MCP_RATE_LIMIT_WINDOW_SECONDS: ${MCP_RATE_LIMIT_WINDOW_SECONDS:-60}
+      PUBLIC_DATA_SERVICE_KEY: ${PUBLIC_DATA_SERVICE_KEY:-}
+      SEOUL_OPEN_API_KEY: ${SEOUL_OPEN_API_KEY:-}
+      ELEVATOR_STATUS_API_KEY: ${ELEVATOR_STATUS_API_KEY:-}
+      ELEVATOR_INFO_API_KEY: ${ELEVATOR_INFO_API_KEY:-}
+      RESTROOM_API_KEY: ${RESTROOM_API_KEY:-}
+      FACILITY_API_URL: ${FACILITY_API_URL:-}
+      FACILITY_API_OPERATIONS: ${FACILITY_API_OPERATIONS:-getFcElvtr,getFcEsctr}
+      SHORTEST_ROUTE_API_URL: ${SHORTEST_ROUTE_API_URL:-}
+      SHORTEST_ROUTE_API_OPERATION: ${SHORTEST_ROUTE_API_OPERATION:-getShtrmPath2}
+      ELEVATOR_STATUS_API_URL: ${ELEVATOR_STATUS_API_URL:-}
+      ELEVATOR_INFO_API_URL: ${ELEVATOR_INFO_API_URL:-}
+      RESTROOM_API_URL: ${RESTROOM_API_URL:-}
+      HTTP_TIMEOUT_SECONDS: ${HTTP_TIMEOUT_SECONDS:-10}
+      HTTP_MAX_RETRIES: ${HTTP_MAX_RETRIES:-2}
+      HTTP_RETRY_BACKOFF_SECONDS: ${HTTP_RETRY_BACKOFF_SECONDS:-0.5}
+      CACHE_BACKEND: ${CACHE_BACKEND:-redis}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+      CACHE_STALE_TTL_SECONDS: ${CACHE_STALE_TTL_SECONDS:-86400}
+      REDIS_SOCKET_TIMEOUT_SECONDS: ${REDIS_SOCKET_TIMEOUT_SECONDS:-2.0}
+      REDIS_SOCKET_CONNECT_TIMEOUT_SECONDS: ${REDIS_SOCKET_CONNECT_TIMEOUT_SECONDS:-2.0}
+      ELEVATOR_STATUS_TTL_SECONDS: ${ELEVATOR_STATUS_TTL_SECONDS:-180}
+      FACILITY_INFO_TTL_SECONDS: ${FACILITY_INFO_TTL_SECONDS:-86400}
+      ROUTE_TTL_SECONDS: ${ROUTE_TTL_SECONDS:-3600}
+      API_FAILURE_TTL_SECONDS: ${API_FAILURE_TTL_SECONDS:-60}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      LOG_FORMAT: ${LOG_FORMAT:-json}
+    expose:
+      - "8000"
+    depends_on:
+      redis:
+        condition: service_started
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3).read()",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    networks:
+      - mcp-internal
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    networks:
+      - mcp-internal
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      MCP_DOMAIN: ${MCP_DOMAIN:-mcp.example.com}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile.example:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      barrier-free-mobility-mcp:
+        condition: service_started
+    networks:
+      - mcp-internal
+
+networks:
+  mcp-internal:
+    driver: bridge
+
+volumes:
+  redis-data:
+  caddy-data:
+  caddy-config:

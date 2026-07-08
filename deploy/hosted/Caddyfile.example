@@ -1,0 +1,9 @@
+{$MCP_DOMAIN} {
+	encode zstd gzip
+
+	reverse_proxy barrier-free-mobility-mcp:8000
+
+	header {
+		-Server
+	}
+}
