@@ -240,7 +240,8 @@ uv run python scripts/check_route_accuracy.py --case-set basic --search-date "20
 - `app/`, `scripts/`, `tests/`
 - `pyproject.toml`, `uv.lock`
 - `Dockerfile`, `docker-compose.yml`, `.env.example`
-- `README.md`, `ROADMAP.md`, `AGENTS.md`, `codex_handoff.md`
+- `docs/hosted-deployment.md`, `deploy/hosted/*.example`, `deploy/hosted/docker-compose.hosted.yml`
+- `README.md`, `ROADMAP.md`, `AGENTS.md`
 
 제외 대상:
 
@@ -248,6 +249,7 @@ uv run python scripts/check_route_accuracy.py --case-set basic --search-date "20
 - `.venv/`, `__pycache__/`, `.pytest_cache/`, `.ruff_cache/`
 - `.tmp-*`, `*.log`, local smoke output
 - `dist/`, `build/`, `*.egg-info/`
+- `codex_handoff.md`, `tests/fixtures/live_samples/`
 
 배포 전 실행:
 
