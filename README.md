@@ -505,6 +505,18 @@ cp .env.example .env
 docker compose up --build
 ```
 
+hosted 운영은 기본 Docker Compose와 분리된 예시를 사용합니다. 운영 서버에서는 실제 secret을
+`deploy/hosted/.env.hosted`에만 넣고 commit하지 않습니다.
+
+```bash
+cp deploy/hosted/hosted.env.example deploy/hosted/.env.hosted
+docker compose -f deploy/hosted/docker-compose.hosted.yml --env-file deploy/hosted/.env.hosted config
+docker compose -f deploy/hosted/docker-compose.hosted.yml --env-file deploy/hosted/.env.hosted up -d --build
+```
+
+자세한 Oracle Cloud VM, Redis, Caddy HTTPS reverse proxy 설정은
+[Hosted Deployment Guide](docs/hosted-deployment.md)를 참고합니다.
+
 ## 주의사항
 
 이 서버는 접근성 데이터를 기반으로 이동 전 확인해야 할 위험 구간을 점검합니다.
