@@ -41,6 +41,17 @@ uv run ruff check .
 - `APP_MODE=live`: 설정된 공공 API endpoint를 호출합니다. 일부 source가 실패하면 가능한 범위에서
   `PARTIAL`, `failed_sources`, `limitations`가 포함된 결과를 반환합니다.
 
+## 사용 방식 선택
+
+이 MCP는 세 가지 방식으로 사용할 수 있습니다.
+
+- 로컬 개발/개인 테스트: 사용자 PC에서 `APP_MODE=mock` 또는 `APP_MODE=live`로 실행합니다. live mode는 사용자가 직접 공공 API key를 설정해야 합니다.
+- 제한된 외부 테스트: 운영자가 서버를 띄우고 `MCP_AUTH_ENABLED=true`와 Bearer token으로 `/mcp`를 보호합니다.
+- hosted 운영: 운영자가 공공 API key를 서버 `.env`에만 보관하고, 일반 사용자는 HTTPS MCP URL만 LLM client에 등록합니다.
+
+일반 사용자가 공공 API key 없이 테스트하게 하려면 hosted 운영이 필요합니다. Oracle Cloud VM, Redis, Caddy HTTPS reverse proxy 기준 절차는
+[Hosted Deployment Guide](docs/hosted-deployment.md)를 따릅니다.
+
 live mode에는 API key와 endpoint URL이 필요합니다.
 
 ```env
