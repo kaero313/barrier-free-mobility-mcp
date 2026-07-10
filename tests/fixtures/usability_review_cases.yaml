@@ -1,0 +1,148 @@
+version: 1
+
+rubric:
+  dimensions:
+    understandability: "전문 용어 없이 첫 독해에서 이해할 수 있는가"
+    actionability: "출발 여부나 재확인 행동을 결정하는 데 도움이 되는가"
+    uncertainty_clarity: "확인된 정보와 미확인 정보가 분명히 구분되는가"
+    accessibility_relevance: "길찾기보다 교통약자 접근성 정보가 중심인가"
+    brevity: "핵심 정보를 유지하면서 불필요하게 길지 않은가"
+
+allowed_flags:
+  - unsafe_certainty
+  - missing_station_name
+  - unclear_facility_location
+  - unclear_source_or_time
+  - route_details_over_accessibility
+  - unclear_clarification_question
+
+cases:
+  - name: wheelchair_direct_route_review
+    source_case: hongdae_to_samsung_wheelchair
+    persona: "계단과 에스컬레이터를 이용할 수 없는 휠체어 이용자"
+    review_focus:
+      - "역별 엘리베이터 근거가 먼저 보이는가"
+      - "미확인 동선을 가능하다고 단정하지 않는가"
+    modes: [mock, live]
+    basic: true
+
+  - name: stroller_direct_route_review
+    source_case: hongdae_to_samsung_stroller
+    persona: "계단 이용이 어려운 유모차 이용자"
+    review_focus:
+      - "유모차 조건이 답변 판단에 반영됐는가"
+      - "휠체어 이용자로 잘못 표현하지 않는가"
+    modes: [mock, live]
+    basic: true
+
+  - name: walker_route_review
+    question: "보행기를 쓰는데 1호선 서울역에서 1호선 시청역까지 계단 없이 갈 수 있어?"
+    category: trip_accessibility
+    persona: "보행기를 사용하고 계단 이용이 어려운 사람"
+    review_focus:
+      - "보행기와 계단 불가 조건이 명시되는가"
+      - "엘리베이터 동선 미확인 범위가 이해되는가"
+    modes: [mock, live]
+    basic: true
+
+  - name: destination_restroom_review
+    source_case: hongdae_to_samsung_restroom_destination
+    persona: "도착역에서 장애인화장실이 필요한 휠체어 이용자"
+    review_focus:
+      - "삼성역 화장실 확인 여부가 직접 표시되는가"
+      - "다른 역 화장실 정보가 핵심 판단을 흐리지 않는가"
+    modes: [mock, live]
+    basic: true
+
+  - name: elevator_maintenance_route_review
+    source_case: sadang_to_ddp_elevator_maintenance
+    persona: "엘리베이터만 이용할 수 있는 휠체어 이용자"
+    review_focus:
+      - "점검 중인 역과 시설이 구체적으로 표시되는가"
+      - "대체 가능성을 근거 없이 제시하지 않는가"
+    modes: [mock, live]
+    basic: true
+
+  - name: missing_elevator_route_review
+    source_case: konkuk_to_express_terminal_elevator_missing
+    persona: "계단과 에스컬레이터를 이용할 수 없는 사람"
+    review_focus:
+      - "시설 부재와 API 미확인을 구분하는가"
+      - "확인되지 않은 역을 역명 단위로 알려주는가"
+    modes: [mock, live]
+    basic: false
+
+  - name: elevator_status_review
+    source_case: gangnam_elevator_status_question
+    persona: "강남역 엘리베이터 상태를 출발 전에 확인하는 사람"
+    review_focus:
+      - "운행 상태와 위치가 구분되는가"
+      - "조회 시각과 재확인 안내가 보이는가"
+    modes: [mock, live]
+    basic: true
+
+  - name: accessible_restroom_location_review
+    source_case: jamsil_accessible_restroom_question
+    persona: "잠실역 장애인화장실 위치가 필요한 사람"
+    review_focus:
+      - "시설 존재 여부와 위치를 명확하게 설명하는가"
+      - "일반 화장실로 오해할 표현이 없는가"
+    modes: [mock, live]
+    basic: true
+
+  - name: station_elevator_alternative_review
+    source_case: elevator_broken_alternative
+    persona: "현재 엘리베이터 대신 같은 역의 다른 시설을 찾는 사람"
+    review_focus:
+      - "정상 상태와 위치가 확인된 시설만 추천하는가"
+      - "고장 정보가 없을 때 질문을 부정하지 않고 설명하는가"
+    modes: [mock, live]
+    basic: true
+
+  - name: accessible_route_alternative_review
+    source_case: hongdae_to_samsung_accessible_alternative
+    persona: "휠체어로 이용할 수 있는 다른 경로를 찾는 사람"
+    review_focus:
+      - "접근성 위험이 환승 횟수와 시간보다 우선하는가"
+      - "API 후보 밖의 우회 경로를 만들어내지 않는가"
+    modes: [mock, live]
+    basic: true
+
+  - name: ambiguous_interchange_line_review
+    source_case: express_terminal_elevator_line_clarification
+    persona: "고속터미널역 호선을 특정하지 않은 사람"
+    review_focus:
+      - "왜 호선 정보가 필요한지 이해할 수 있는가"
+      - "선택 가능한 호선을 구체적으로 제시하는가"
+    modes: [mock, live]
+    basic: true
+
+  - name: ambiguous_place_review
+    source_case: hongdae_to_coex_place_name
+    persona: "역명 대신 홍대와 코엑스라는 장소명을 사용한 사람"
+    review_focus:
+      - "확정된 출발역과 복수 도착 후보를 구분하는가"
+      - "삼성역과 봉은사역 선택 질문이 이해되는가"
+    modes: [mock, live]
+    basic: false
+
+  - name: current_route_context_review
+    source_case: current_route_elevator_issue
+    persona: "이전 대화의 경로를 MCP가 기억한다고 생각하는 사람"
+    review_focus:
+      - "경로를 저장하지 않는다는 설명이 이해되는가"
+      - "다음에 제공할 정보를 구체적으로 요청하는가"
+    modes: [mock, live]
+    basic: false
+
+  - name: partial_elevator_source_failure_review
+    source_case: gangnam_elevator_status_question
+    category: partial_failure
+    persona: "공공 API 일부가 실패한 상황에서 시설 상태를 확인하는 사람"
+    review_focus:
+      - "API 실패를 시설이 없다고 표현하지 않는가"
+      - "확인된 정보와 실패한 정보가 분리되는가"
+    modes: [mock]
+    mock_failure_sources:
+      - elevator_status
+    basic: false
