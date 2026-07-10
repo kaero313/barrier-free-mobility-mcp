@@ -1,0 +1,15 @@
+version: 1
+reviewer_id: ""
+reviewed_at: null
+mode: mock
+cases:
+  - case_name: wheelchair_direct_route_review
+    response_sha256: "0000000000000000000000000000000000000000000000000000000000000000"
+    ratings:
+      understandability: null
+      actionability: null
+      uncertainty_clarity: null
+      accessibility_relevance: null
+      brevity: null
+    flags: []
+    comment: ""
