@@ -27,6 +27,7 @@ build/
 .tmp-*
 tmp/
 temp/
+artifacts/usability/
 
 # Internal handoff and generated live API samples
 codex_handoff.md

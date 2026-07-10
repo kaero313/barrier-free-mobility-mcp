@@ -15,6 +15,7 @@ __pycache__/
 *.log
 tmp/
 temp/
+artifacts/usability/
 
 .git/
 .gitignore
