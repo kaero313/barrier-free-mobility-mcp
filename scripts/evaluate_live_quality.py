@@ -15,7 +15,9 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from app.adapters.http_pool import close_shared_http_client  # noqa: E402
 from app.core.config import AppMode, CacheBackend, Settings  # noqa: E402
+from app.core.metrics import metrics_registry  # noqa: E402
 from app.core.security import redact_sensitive_text  # noqa: E402
 from app.schemas.accessibility import AccessibilityQuestionResult  # noqa: E402
 from app.services.accessibility_service import AccessibilityService  # noqa: E402
@@ -41,6 +43,17 @@ class EvaluationSummary:
     issue_count: int
     issues: list[str]
     error: str | None = None
+
+
+@dataclass(frozen=True)
+class PerformancePassSummary:
+    label: str
+    total_latency_ms: int
+    public_api_call_count: int
+    public_api_error_count: int
+    cache_hit_count: int
+    cache_miss_count: int
+    cache_stale_count: int
 
 
 def load_case_fixture(path: Path = CASE_FILE) -> dict[str, Any]:
@@ -215,6 +228,31 @@ def summaries_to_dicts(summaries: list[EvaluationSummary]) -> list[dict[str, Any
     return [asdict(summary) for summary in summaries]
 
 
+def summarize_performance_pass(
+    label: str,
+    *,
+    elapsed_seconds: float,
+    before: dict[str, Any],
+    after: dict[str, Any],
+) -> PerformancePassSummary:
+    before_cache = before.get("cache", {})
+    after_cache = after.get("cache", {})
+    return PerformancePassSummary(
+        label=label,
+        total_latency_ms=int(elapsed_seconds * 1000),
+        public_api_call_count=int(after.get("public_api_call_count", 0))
+        - int(before.get("public_api_call_count", 0)),
+        public_api_error_count=int(after.get("public_api_error_count", 0))
+        - int(before.get("public_api_error_count", 0)),
+        cache_hit_count=int(after_cache.get("HIT", 0))
+        - int(before_cache.get("HIT", 0)),
+        cache_miss_count=int(after_cache.get("MISS", 0))
+        - int(before_cache.get("MISS", 0)),
+        cache_stale_count=int(after_cache.get("STALE", 0))
+        - int(before_cache.get("STALE", 0)),
+    )
+
+
 def format_table(summaries: list[EvaluationSummary]) -> str:
     headers = [
         "name",
@@ -264,6 +302,20 @@ def format_table(summaries: list[EvaluationSummary]) -> str:
     return "\n".join(lines)
 
 
+def format_performance_table(passes: list[PerformancePassSummary]) -> str:
+    lines = [
+        "pass | total_ms | public_api | api_errors | cache_hit | cache_miss | stale",
+        "-----+----------+------------+------------+-----------+------------+------",
+    ]
+    lines.extend(
+        f"{item.label} | {item.total_latency_ms} | {item.public_api_call_count} | "
+        f"{item.public_api_error_count} | {item.cache_hit_count} | "
+        f"{item.cache_miss_count} | {item.cache_stale_count}"
+        for item in passes
+    )
+    return "\n".join(lines)
+
+
 def shorten(value: str, limit: int) -> str:
     if len(value) <= limit:
         return value
@@ -285,6 +337,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--limit", type=int, default=None)
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--strict", action="store_true")
+    parser.add_argument(
+        "--compare-cache",
+        action="store_true",
+        help="Run the same cases twice and compare cold/warm latency and API calls.",
+    )
     args = parser.parse_args()
     if args.limit is not None and args.limit < 0:
         parser.error("--limit must be greater than or equal to 0.")
@@ -301,22 +358,70 @@ async def run_cli(args: argparse.Namespace) -> int:
         limit=args.limit,
     )
     service = build_live_service()
-    summaries = await evaluate_cases(
-        service,
-        cases,
-        required_sections=list(fixture.get("required_sections", [])),
-        banned_phrases=list(fixture.get("banned_phrases", [])),
-    )
-    issue_count = sum(summary.issue_count for summary in summaries)
+    metrics_registry.reset()
+    performance_passes: list[PerformancePassSummary] = []
+    warm_summaries: list[EvaluationSummary] = []
+    try:
+        before = metrics_registry.snapshot()
+        started = perf_counter()
+        summaries = await evaluate_cases(
+            service,
+            cases,
+            required_sections=list(fixture.get("required_sections", [])),
+            banned_phrases=list(fixture.get("banned_phrases", [])),
+        )
+        after = metrics_registry.snapshot()
+        performance_passes.append(
+            summarize_performance_pass(
+                "cold",
+                elapsed_seconds=perf_counter() - started,
+                before=before,
+                after=after,
+            )
+        )
+
+        if args.compare_cache:
+            before = after
+            started = perf_counter()
+            warm_summaries = await evaluate_cases(
+                service,
+                cases,
+                required_sections=list(fixture.get("required_sections", [])),
+                banned_phrases=list(fixture.get("banned_phrases", [])),
+            )
+            after = metrics_registry.snapshot()
+            performance_passes.append(
+                summarize_performance_pass(
+                    "warm",
+                    elapsed_seconds=perf_counter() - started,
+                    before=before,
+                    after=after,
+                )
+            )
+    finally:
+        await service.cache.close()
+        await close_shared_http_client()
+
+    all_summaries = [*summaries, *warm_summaries]
+    issue_count = sum(summary.issue_count for summary in all_summaries)
     report = {
         "case_count": len(summaries),
         "issue_count": issue_count,
         "results": summaries_to_dicts(summaries),
+        "performance": [asdict(item) for item in performance_passes],
     }
+    if warm_summaries:
+        report["warm_results"] = summaries_to_dicts(warm_summaries)
     if args.json:
         print(json.dumps(report, ensure_ascii=False, indent=2))
     else:
+        print("[cold]")
         print(format_table(summaries))
+        if warm_summaries:
+            print("\n[warm]")
+            print(format_table(warm_summaries))
+        print("\n[performance]")
+        print(format_performance_table(performance_passes))
         print(f"\ncase_count={len(summaries)} issue_count={issue_count}")
         if issue_count:
             print("Use --json to inspect issue details.")

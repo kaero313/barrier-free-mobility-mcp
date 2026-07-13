@@ -14,6 +14,7 @@ from scripts.evaluate_live_quality import (
     format_table,
     select_cases,
     summarize_error,
+    summarize_performance_pass,
     summarize_response,
 )
 
@@ -206,3 +207,28 @@ def test_format_table_omits_issue_details_by_default() -> None:
     assert "trip" in table
     assert "payload" not in table
     assert "risk_level" not in table
+
+
+
+def test_performance_summary_reports_only_current_pass_deltas() -> None:
+    summary = summarize_performance_pass(
+        "warm",
+        elapsed_seconds=0.125,
+        before={
+            "public_api_call_count": 5,
+            "public_api_error_count": 1,
+            "cache": {"HIT": 2, "MISS": 3, "STALE": 0},
+        },
+        after={
+            "public_api_call_count": 5,
+            "public_api_error_count": 1,
+            "cache": {"HIT": 8, "MISS": 3, "STALE": 1},
+        },
+    )
+
+    assert summary.label == "warm"
+    assert summary.total_latency_ms == 125
+    assert summary.public_api_call_count == 0
+    assert summary.cache_hit_count == 6
+    assert summary.cache_miss_count == 0
+    assert summary.cache_stale_count == 1
