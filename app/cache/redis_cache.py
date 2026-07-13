@@ -2,17 +2,18 @@ from __future__ import annotations
 
 import pickle
 from collections.abc import Callable
+from datetime import UTC, datetime
 from hashlib import sha256
 from time import time
 from typing import Any
 
-from redis import Redis
+from redis.asyncio import Redis
 from redis.exceptions import RedisError
 
 from app.cache.base import CacheEntry
 
-CACHE_PAYLOAD_VERSION = 1
-DEFAULT_KEY_PREFIX = "barrier-free-mobility-mcp:cache:v1"
+CACHE_PAYLOAD_VERSION = 2
+DEFAULT_KEY_PREFIX = "barrier-free-mobility-mcp:cache:v2"
 
 
 class RedisTTLCache:
@@ -39,9 +40,9 @@ class RedisTTLCache:
             decode_responses=False,
         )
 
-    def get(self, key: str, *, allow_stale: bool = False) -> CacheEntry | None:
+    async def get(self, key: str, *, allow_stale: bool = False) -> CacheEntry | None:
         try:
-            raw = self._client.get(self._redis_key(key))
+            raw = await self._client.get(self._redis_key(key))
         except RedisError:
             return None
         if raw is None:
@@ -63,21 +64,33 @@ class RedisTTLCache:
             value=payload["value"],
             staleness_seconds=max(0, int(now - payload["created_at"])),
             stale=stale,
+            fetched_at=datetime.fromtimestamp(payload["fetched_at"], UTC),
         )
 
-    def set(self, key: str, value: Any, *, ttl_seconds: int) -> None:
+    async def set(
+        self,
+        key: str,
+        value: Any,
+        *,
+        ttl_seconds: int,
+        fetched_at: datetime | None = None,
+    ) -> None:
         fresh_ttl_seconds = max(1, int(ttl_seconds))
         now = self._time_fn()
+        normalized_fetched_at = _as_utc(
+            fetched_at or datetime.fromtimestamp(now, UTC)
+        )
         stale_expires_at = now + fresh_ttl_seconds + self._stale_ttl_seconds
         payload = {
             "version": CACHE_PAYLOAD_VERSION,
             "created_at": now,
             "expires_at": now + fresh_ttl_seconds,
             "stale_expires_at": stale_expires_at,
+            "fetched_at": normalized_fetched_at.timestamp(),
             "value": value,
         }
         try:
-            self._client.set(
+            await self._client.set(
                 self._redis_key(key),
                 pickle.dumps(payload, protocol=pickle.HIGHEST_PROTOCOL),
                 ex=max(1, int(stale_expires_at - now)),
@@ -85,11 +98,17 @@ class RedisTTLCache:
         except RedisError:
             return
 
-    def ping(self) -> bool:
+    async def ping(self) -> bool:
         try:
-            return bool(self._client.ping())
+            return bool(await self._client.ping())
         except RedisError:
             return False
+
+    async def close(self) -> None:
+        try:
+            await self._client.aclose()
+        except RedisError:
+            return
 
     def _redis_key(self, key: str) -> str:
         digest = sha256(key.encode("utf-8")).hexdigest()
@@ -105,10 +124,27 @@ class RedisTTLCache:
             return None
         if payload.get("version") != CACHE_PAYLOAD_VERSION:
             return None
-        required = {"created_at", "expires_at", "stale_expires_at", "value"}
+        required = {
+            "created_at",
+            "expires_at",
+            "stale_expires_at",
+            "fetched_at",
+            "value",
+        }
         if not required.issubset(payload):
+            return None
+        if not all(
+            isinstance(payload[field], (int, float))
+            for field in ("created_at", "expires_at", "stale_expires_at", "fetched_at")
+        ):
             return None
         return payload
 
 
 RedisCache = RedisTTLCache
+
+
+def _as_utc(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value.replace(tzinfo=UTC)
+    return value.astimezone(UTC)

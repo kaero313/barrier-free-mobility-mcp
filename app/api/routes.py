@@ -14,7 +14,7 @@ from app.core.config import Settings
 def register_http_routes(mcp: Any, settings: Settings) -> None:
     @mcp.custom_route("/health", methods=["GET"], include_in_schema=False)
     async def health_route(request: Request) -> Response:
-        return JSONResponse(health(settings))
+        return JSONResponse(await health(settings))
 
     @mcp.custom_route("/metrics", methods=["GET"], include_in_schema=False)
     async def metrics_route(request: Request) -> Response:

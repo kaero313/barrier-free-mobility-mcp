@@ -7,10 +7,10 @@ from app.core.config import AppMode, CacheBackend, Settings, get_settings
 from app.core.time import utc_now
 
 
-def health(settings: Settings | None = None) -> dict[str, Any]:
+async def health(settings: Settings | None = None) -> dict[str, Any]:
     settings = settings or get_settings()
     public_apis = _public_api_status(settings)
-    cache_status = _cache_status(settings)
+    cache_status = await _cache_status(settings)
     warnings = _warnings(settings, public_apis, cache_status)
     return {
         "status": "degraded" if warnings else "ok",
@@ -90,11 +90,11 @@ def _source_status(status: dict[str, bool], *, required: bool) -> str:
     return "missing_config"
 
 
-def _cache_status(settings: Settings) -> str:
+async def _cache_status(settings: Settings) -> str:
     if settings.cache_backend == CacheBackend.MEMORY:
         return "ok"
     if settings.cache_backend == CacheBackend.REDIS:
-        return "ok" if redis_cache_available(settings) else "unavailable"
+        return "ok" if await redis_cache_available(settings) else "unavailable"
     return "unknown"
 
 

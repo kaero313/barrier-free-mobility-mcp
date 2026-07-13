@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from unittest.mock import AsyncMock
+
 import httpx
 
 from app.api.health import health
@@ -12,7 +14,7 @@ from app.schemas.accessibility import MobilityProfile
 from app.schemas.common import CacheStatus
 
 
-def test_health_reports_mock_mode_without_secrets() -> None:
+async def test_health_reports_mock_mode_without_secrets() -> None:
     settings = Settings(
         _env_file=None,
         app_mode=AppMode.MOCK,
@@ -20,7 +22,7 @@ def test_health_reports_mock_mode_without_secrets() -> None:
         mcp_api_key="SECRET-MCP-KEY",
     )
 
-    payload = health(settings)
+    payload = await health(settings)
 
     assert payload["status"] == "ok"
     assert payload["app"]["mode"] == AppMode.MOCK
@@ -35,7 +37,7 @@ def test_health_reports_mock_mode_without_secrets() -> None:
     assert "SECRET-MCP-KEY" not in str(payload)
 
 
-def test_health_reports_degraded_live_mode_when_config_is_missing() -> None:
+async def test_health_reports_degraded_live_mode_when_config_is_missing() -> None:
     settings = Settings(
         _env_file=None,
         app_mode=AppMode.LIVE,
@@ -51,22 +53,25 @@ def test_health_reports_degraded_live_mode_when_config_is_missing() -> None:
         restroom_api_url="",
     )
 
-    payload = health(settings)
+    payload = await health(settings)
 
     assert payload["status"] == "degraded"
     assert payload["dependencies"]["public_apis"]["shortest_route"]["status"] == "missing_config"
     assert payload["warnings"]
 
 
-def test_health_reports_redis_cache_ok_without_secrets(monkeypatch) -> None:
-    monkeypatch.setattr("app.api.health.redis_cache_available", lambda settings: True)
+async def test_health_reports_redis_cache_ok_without_secrets(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "app.api.health.redis_cache_available",
+        AsyncMock(return_value=True),
+    )
     settings = Settings(
         _env_file=None,
         cache_backend=CacheBackend.REDIS,
         redis_url="redis://:SECRET-REDIS-PASSWORD@localhost:6379/0",
     )
 
-    payload = health(settings)
+    payload = await health(settings)
 
     assert payload["status"] == "ok"
     assert payload["dependencies"]["cache"]["backend"] == CacheBackend.REDIS
@@ -74,11 +79,14 @@ def test_health_reports_redis_cache_ok_without_secrets(monkeypatch) -> None:
     assert "SECRET-REDIS-PASSWORD" not in str(payload)
 
 
-def test_health_reports_degraded_when_redis_is_unavailable(monkeypatch) -> None:
-    monkeypatch.setattr("app.api.health.redis_cache_available", lambda settings: False)
+async def test_health_reports_degraded_when_redis_is_unavailable(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "app.api.health.redis_cache_available",
+        AsyncMock(return_value=False),
+    )
     settings = Settings(_env_file=None, cache_backend=CacheBackend.REDIS)
 
-    payload = health(settings)
+    payload = await health(settings)
 
     assert payload["status"] == "degraded"
     assert payload["dependencies"]["cache"]["status"] == "unavailable"

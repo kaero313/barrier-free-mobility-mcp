@@ -15,16 +15,22 @@ def build_cache(settings: Settings | None = None) -> CacheProtocol:
             socket_timeout_seconds=active_settings.redis_socket_timeout_seconds,
             socket_connect_timeout_seconds=active_settings.redis_socket_connect_timeout_seconds,
         )
-    return MemoryTTLCache()
+    return MemoryTTLCache(
+        stale_ttl_seconds=active_settings.cache_stale_ttl_seconds,
+    )
 
 
-def redis_cache_available(settings: Settings | None = None) -> bool:
+async def redis_cache_available(settings: Settings | None = None) -> bool:
     active_settings = settings or get_settings()
     if active_settings.cache_backend != CacheBackend.REDIS:
         return False
-    return RedisTTLCache(
+    cache = RedisTTLCache(
         active_settings.redis_url,
         stale_ttl_seconds=active_settings.cache_stale_ttl_seconds,
         socket_timeout_seconds=active_settings.redis_socket_timeout_seconds,
         socket_connect_timeout_seconds=active_settings.redis_socket_connect_timeout_seconds,
-    ).ping()
+    )
+    try:
+        return await cache.ping()
+    finally:
+        await cache.close()
