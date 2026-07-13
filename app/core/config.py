@@ -71,6 +71,9 @@ class Settings(BaseSettings):
     http_timeout_seconds: float = 10
     http_max_retries: int = 2
     http_retry_backoff_seconds: float = 0.5
+    http_max_connections: int = 20
+    http_max_keepalive_connections: int = 10
+    http_keepalive_expiry_seconds: float = 30.0
 
     cache_backend: CacheBackend = CacheBackend.MEMORY
     redis_url: str = "redis://localhost:6379/0"
@@ -120,6 +123,16 @@ class Settings(BaseSettings):
             raise ValueError("REDIS_SOCKET_TIMEOUT_SECONDS must be greater than 0.")
         if self.redis_socket_connect_timeout_seconds <= 0:
             raise ValueError("REDIS_SOCKET_CONNECT_TIMEOUT_SECONDS must be greater than 0.")
+        if self.http_max_connections <= 0:
+            raise ValueError("HTTP_MAX_CONNECTIONS must be greater than 0.")
+        if self.http_max_keepalive_connections < 0:
+            raise ValueError("HTTP_MAX_KEEPALIVE_CONNECTIONS must be greater than or equal to 0.")
+        if self.http_max_keepalive_connections > self.http_max_connections:
+            raise ValueError(
+                "HTTP_MAX_KEEPALIVE_CONNECTIONS must not exceed HTTP_MAX_CONNECTIONS."
+            )
+        if self.http_keepalive_expiry_seconds <= 0:
+            raise ValueError("HTTP_KEEPALIVE_EXPIRY_SECONDS must be greater than 0.")
         return self
 
 

@@ -70,6 +70,189 @@ async def test_http_adapter_reports_status_code_without_key() -> None:
     assert "SECRET-SERVICE-KEY" not in str(exc_info.value)
 
 
+@respx.mock
+async def test_http_adapter_does_not_retry_non_retryable_4xx() -> None:
+    settings = Settings(
+        _env_file=None,
+        app_mode=AppMode.LIVE,
+        http_max_retries=2,
+        http_retry_backoff_seconds=0,
+    )
+    route = respx.get("https://example.test/not-found").mock(
+        return_value=httpx.Response(404)
+    )
+    client = HttpPublicApiClient(
+        source_name="facility_info",
+        endpoint_url="https://example.test/not-found",
+        api_key="SECRET",
+        api_key_field="serviceKey",
+        settings=settings,
+    )
+
+    with pytest.raises(PublicApiError, match="http_status:404"):
+        await client.fetch()
+
+    assert route.call_count == 1
+
+
+@respx.mock
+async def test_http_adapter_retries_5xx_then_reuses_same_client() -> None:
+    settings = Settings(
+        _env_file=None,
+        app_mode=AppMode.LIVE,
+        http_max_retries=2,
+        http_retry_backoff_seconds=0,
+    )
+    responses = iter(
+        [
+            httpx.Response(503),
+            httpx.Response(200, json={"rows": [{"ok": True}]}),
+        ]
+    )
+    route = respx.get("https://example.test/retry").mock(
+        side_effect=lambda _request: next(responses)
+    )
+    client = HttpPublicApiClient(
+        source_name="facility_info",
+        endpoint_url="https://example.test/retry",
+        api_key="SECRET",
+        api_key_field="serviceKey",
+        settings=settings,
+    )
+    same_pool_client = HttpPublicApiClient(
+        source_name="restroom",
+        endpoint_url="https://example.test/restroom",
+        api_key="SECRET",
+        api_key_field="KEY",
+        settings=settings,
+    )
+
+    result = await client.fetch()
+
+    assert result == {"rows": [{"ok": True}]}
+    assert route.call_count == 2
+    assert client.http_client is same_pool_client.http_client
+
+
+@respx.mock
+async def test_http_adapter_retries_timeout_then_succeeds() -> None:
+    settings = Settings(
+        _env_file=None,
+        app_mode=AppMode.LIVE,
+        http_max_retries=1,
+        http_retry_backoff_seconds=0,
+    )
+    responses = iter(
+        [
+            httpx.ReadTimeout("timeout"),
+            httpx.Response(200, json={"rows": []}),
+        ]
+    )
+
+    def response_or_raise(_request):
+        value = next(responses)
+        if isinstance(value, Exception):
+            raise value
+        return value
+
+    route = respx.get("https://example.test/timeout-retry").mock(
+        side_effect=response_or_raise
+    )
+    client = HttpPublicApiClient(
+        source_name="elevator_status",
+        endpoint_url="https://example.test/timeout-retry",
+        api_key="SECRET",
+        api_key_field="KEY",
+        settings=settings,
+    )
+
+    result = await client.fetch()
+
+    assert result == {"rows": []}
+    assert route.call_count == 2
+
+
+@respx.mock
+async def test_http_adapter_rejects_public_data_error_inside_http_200() -> None:
+    settings = Settings(_env_file=None, app_mode=AppMode.LIVE, http_max_retries=0)
+    respx.get("https://example.test/facility").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "response": {
+                    "header": {
+                        "resultCode": "99",
+                        "resultMsg": "invalid key SECRET-SERVICE-KEY",
+                    }
+                }
+            },
+        )
+    )
+    client = HttpPublicApiClient(
+        source_name="facility_info",
+        endpoint_url="https://example.test/facility",
+        api_key="SECRET-SERVICE-KEY",
+        api_key_field="serviceKey",
+        settings=settings,
+    )
+
+    with pytest.raises(PublicApiError) as exc_info:
+        await client.fetch()
+
+    assert exc_info.value.reason == "api_result:99"
+    assert "invalid key" not in str(exc_info.value)
+    assert "SECRET-SERVICE-KEY" not in str(exc_info.value)
+
+
+@respx.mock
+async def test_http_adapter_rejects_seoul_error_inside_http_200() -> None:
+    settings = Settings(_env_file=None, app_mode=AppMode.LIVE, http_max_retries=0)
+    respx.get("https://example.test/elevator").mock(
+        return_value=httpx.Response(
+            200,
+            json={
+                "SeoulData": {
+                    "RESULT": {"CODE": "ERROR-301", "MESSAGE": "INVALID KEY"}
+                }
+            },
+        )
+    )
+    client = HttpPublicApiClient(
+        source_name="elevator_status",
+        endpoint_url="https://example.test/elevator",
+        api_key="SECRET-SERVICE-KEY",
+        api_key_field="KEY",
+        settings=settings,
+    )
+
+    with pytest.raises(PublicApiError) as exc_info:
+        await client.fetch()
+
+    assert exc_info.value.reason == "api_result:ERROR-301"
+
+
+@respx.mock
+async def test_http_adapter_accepts_no_data_envelope_inside_http_200() -> None:
+    settings = Settings(_env_file=None, app_mode=AppMode.LIVE, http_max_retries=0)
+    respx.get("https://example.test/elevator").mock(
+        return_value=httpx.Response(
+            200,
+            json={"SeoulData": {"RESULT": {"CODE": "INFO-200"}, "row": []}},
+        )
+    )
+    client = HttpPublicApiClient(
+        source_name="elevator_status",
+        endpoint_url="https://example.test/elevator",
+        api_key="SECRET-SERVICE-KEY",
+        api_key_field="KEY",
+        settings=settings,
+    )
+
+    response = await client.fetch()
+
+    assert response["SeoulData"]["row"] == []
+
+
 def test_http_adapter_decodes_url_encoded_api_key_before_request() -> None:
     settings = Settings(_env_file=None, app_mode=AppMode.LIVE, http_max_retries=0)
     client = HttpPublicApiClient(

@@ -9,6 +9,8 @@ from xml.etree import ElementTree
 
 import httpx
 
+from app.adapters.api_error import find_api_error_code
+from app.adapters.http_pool import get_shared_http_client
 from app.core.config import Settings
 from app.core.errors import PublicApiError, SourceNotConfiguredError
 from app.core.metrics import metrics_registry
@@ -31,6 +33,7 @@ class HttpPublicApiClient:
         api_key: str,
         api_key_field: str,
         settings: Settings,
+        http_client: httpx.AsyncClient | None = None,
         param_aliases: dict[str, str] | None = None,
         default_params: dict[str, Any] | None = None,
     ) -> None:
@@ -39,13 +42,21 @@ class HttpPublicApiClient:
         self.api_key = unquote(api_key)
         self.api_key_field = api_key_field
         self.settings = settings
+        self.http_client = http_client or get_shared_http_client(settings)
         self.param_aliases = param_aliases or {}
         self.default_params = default_params or {}
 
     async def fetch(self, **params: Any) -> dict[str, Any]:
+        return await self.fetch_endpoint(self.endpoint_url, **params)
+
+    async def fetch_endpoint(
+        self,
+        endpoint_url: str,
+        **params: Any,
+    ) -> dict[str, Any]:
         started = perf_counter()
         try:
-            result = await self._fetch_uncounted(**params)
+            result = await self._fetch_uncounted(endpoint_url, **params)
         except Exception:
             metrics_registry.record_public_api_call(
                 self.source_name,
@@ -61,26 +72,33 @@ class HttpPublicApiClient:
         )
         return result
 
-    async def _fetch_uncounted(self, **params: Any) -> dict[str, Any]:
-        if not self.endpoint_url:
+    async def _fetch_uncounted(
+        self,
+        endpoint_url: str,
+        **params: Any,
+    ) -> dict[str, Any]:
+        if not endpoint_url:
             raise SourceNotConfiguredError(self.source_name)
 
         query_params = self._query_params(params)
         if self.api_key:
             query_params[self.api_key_field] = self.api_key
-        endpoint_url, query_params = self._format_endpoint_url(self.endpoint_url, query_params)
+        endpoint_url, query_params = self._format_endpoint_url(endpoint_url, query_params)
 
         last_error: Exception | None = None
         for attempt in range(self.settings.http_max_retries + 1):
             try:
-                async with httpx.AsyncClient(timeout=self.settings.http_timeout_seconds) as client:
-                    response = await client.get(endpoint_url, params=query_params)
-                    response.raise_for_status()
-                    data = self._parse_response(response)
-                    if not isinstance(data, dict):
-                        raise PublicApiError(self.source_name, "non_object_json_response")
-                    self._raise_for_api_error(data)
-                    return data
+                response = await self.http_client.get(
+                    endpoint_url,
+                    params=query_params,
+                    timeout=self.settings.http_timeout_seconds,
+                )
+                response.raise_for_status()
+                data = self._parse_response(response)
+                if not isinstance(data, dict):
+                    raise PublicApiError(self.source_name, "non_object_json_response")
+                self._raise_for_api_error(data)
+                return data
             except PublicApiError:
                 raise
             except httpx.HTTPStatusError as exc:
@@ -88,18 +106,29 @@ class HttpPublicApiClient:
                     self.source_name,
                     f"http_status:{exc.response.status_code}",
                 )
+                if not _is_retryable_status(exc.response.status_code):
+                    raise last_error from exc
                 if attempt < self.settings.http_max_retries:
-                    await asyncio.sleep(self.settings.http_retry_backoff_seconds * (attempt + 1))
-            except (httpx.HTTPError, ValueError) as exc:
+                    await self._retry_delay(attempt)
+            except httpx.TimeoutException as exc:
                 last_error = exc
                 if attempt < self.settings.http_max_retries:
-                    await asyncio.sleep(self.settings.http_retry_backoff_seconds * (attempt + 1))
+                    await self._retry_delay(attempt)
+            except httpx.HTTPError as exc:
+                raise PublicApiError(self.source_name, type(exc).__name__) from exc
+            except ValueError as exc:
+                raise PublicApiError(self.source_name, type(exc).__name__) from exc
 
         if isinstance(last_error, PublicApiError):
             reason = last_error.reason
         else:
             reason = type(last_error).__name__ if last_error else "unknown_http_error"
         raise PublicApiError(self.source_name, reason)
+
+    async def _retry_delay(self, attempt: int) -> None:
+        await asyncio.sleep(
+            self.settings.http_retry_backoff_seconds * (attempt + 1)
+        )
 
     def _query_params(self, params: dict[str, Any]) -> dict[str, Any]:
         query_params = dict(self.default_params)
@@ -188,16 +217,9 @@ class HttpPublicApiClient:
         raise PublicApiError(self.source_name, "unsupported_response_format")
 
     def _raise_for_api_error(self, data: dict[str, Any]) -> None:
-        header = _find_header(data)
-        if not header:
-            return
-        result_code = str(header.get("resultCode") or header.get("RESULT_CODE") or "").strip()
-        result_msg = str(header.get("resultMsg") or header.get("RESULT_MSG") or "").strip()
-        if result_code and result_code not in {"00", "0", "INFO-000"}:
-            raise PublicApiError(
-                self.source_name,
-                f"api_result:{result_code}:{result_msg[:80]}",
-            )
+        error_code = find_api_error_code(data)
+        if error_code is not None:
+            raise PublicApiError(self.source_name, f"api_result:{error_code}")
 
 
 def _xml_to_dict(text: str, source_name: str) -> dict[str, Any]:
@@ -227,19 +249,5 @@ def _element_to_value(element: ElementTree.Element) -> Any:
     return grouped
 
 
-def _find_header(value: Any) -> dict[str, Any] | None:
-    if isinstance(value, dict):
-        for key in ("header", "HEADER"):
-            header = value.get(key)
-            if isinstance(header, dict):
-                return header
-        for item in value.values():
-            found = _find_header(item)
-            if found:
-                return found
-    if isinstance(value, list):
-        for item in value:
-            found = _find_header(item)
-            if found:
-                return found
-    return None
+def _is_retryable_status(status_code: int) -> bool:
+    return status_code == 429 or status_code >= 500
