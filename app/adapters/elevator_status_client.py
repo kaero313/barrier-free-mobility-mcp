@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from app.adapters.base import HttpPublicApiClient
+from app.core.concurrency import gather_limited
 from app.core.config import Settings
 from app.normalizers.helpers import as_int, rows_from_raw
 
@@ -39,22 +40,45 @@ class ElevatorStatusClient(HttpPublicApiClient):
             return first_page
 
         page_size = max(1, end_index - start_index + 1)
-        pages = [first_page]
+        page_ranges: list[tuple[int, int]] = []
         next_start = end_index + 1
         while next_start <= total_count:
             next_end = min(next_start + page_size - 1, total_count)
-            pages.append(
-                await super().fetch(
-                    **{
-                        **params,
-                        start_key: next_start,
-                        end_key: next_end,
-                    }
-                )
-            )
+            page_ranges.append((next_start, next_end))
             next_start = next_end + 1
 
-        return _merge_seoul_open_data_pages(pages)
+        remaining_pages = await gather_limited(
+            (
+                lambda start=start, end=end: self._fetch_page(
+                    params,
+                    start_key=start_key,
+                    end_key=end_key,
+                    start=start,
+                    end=end,
+                )
+                for start, end in page_ranges
+            ),
+            limit=self.settings.public_api_page_concurrency,
+        )
+
+        return _merge_seoul_open_data_pages([first_page, *remaining_pages])
+
+    async def _fetch_page(
+        self,
+        params: dict[str, Any],
+        *,
+        start_key: str,
+        end_key: str,
+        start: int,
+        end: int,
+    ) -> dict[str, Any]:
+        return await super().fetch(
+            **{
+                **params,
+                start_key: start,
+                end_key: end,
+            }
+        )
 
 
 def _seoul_open_data_total_count(raw: dict[str, Any]) -> int | None:

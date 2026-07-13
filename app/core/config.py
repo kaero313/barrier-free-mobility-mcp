@@ -74,6 +74,8 @@ class Settings(BaseSettings):
     http_max_connections: int = 20
     http_max_keepalive_connections: int = 10
     http_keepalive_expiry_seconds: float = 30.0
+    public_api_page_concurrency: int = 4
+    facility_query_concurrency: int = 4
 
     cache_backend: CacheBackend = CacheBackend.MEMORY
     redis_url: str = "redis://localhost:6379/0"
@@ -133,6 +135,10 @@ class Settings(BaseSettings):
             )
         if self.http_keepalive_expiry_seconds <= 0:
             raise ValueError("HTTP_KEEPALIVE_EXPIRY_SECONDS must be greater than 0.")
+        if self.public_api_page_concurrency <= 0:
+            raise ValueError("PUBLIC_API_PAGE_CONCURRENCY must be greater than 0.")
+        if self.facility_query_concurrency <= 0:
+            raise ValueError("FACILITY_QUERY_CONCURRENCY must be greater than 0.")
         return self
 
 
