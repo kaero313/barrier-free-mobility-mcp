@@ -1,15 +1,31 @@
 FROM python:3.12-slim
 
+ARG UV_VERSION=0.10.9
+
+ENV APP_MODE=mock \
+    HOME="/home/app" \
+    PATH="/app/.venv/bin:$PATH" \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    UV_CACHE_DIR="/home/app/.cache/uv"
+
 WORKDIR /app
 
-COPY pyproject.toml README.md ./
-RUN pip install --no-cache-dir uv && uv sync --no-dev
+RUN pip install --no-cache-dir "uv==${UV_VERSION}"
+RUN addgroup --system app \
+    && adduser --system --ingroup app --home /home/app app \
+    && mkdir -p /home/app/.cache/uv \
+    && chown -R app:app /app /home/app
 
-COPY app ./app
-COPY .env.example ./.env.example
+COPY --chown=app:app pyproject.toml uv.lock README.md ./
 
-ENV APP_MODE=mock
+USER app
+
+RUN uv sync --frozen --no-dev --no-install-project
+
+COPY --chown=app:app app ./app
+COPY --chown=app:app .env.example ./.env.example
+
 EXPOSE 8000
 
-CMD ["uv", "run", "python", "-m", "app.main"]
-
+CMD ["python", "-m", "app.main"]

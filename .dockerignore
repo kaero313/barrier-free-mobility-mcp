@@ -16,6 +16,17 @@ __pycache__/
 tmp/
 temp/
 artifacts/usability/
+artifacts/
+
+tests/
+scripts/
+docs/
+deploy/
+.github/
+AGENTS.md
+ROADMAP.md
+codex_handoff.md
+docker-compose.yml
 
 .git/
 .gitignore
