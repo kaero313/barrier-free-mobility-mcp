@@ -61,6 +61,7 @@ def test_check_route_accuracy_script_summarizes_without_raw_payload() -> None:
         raw={"serviceKey": "SECRET", "document": {"body": {}}},
         checked_at="2026-06-10T09:30:00",
         search_scope="searchDt=2026-06-10 09:30:00",
+        request_value_type="code",
         station_resolution={"origin": {}, "destination": {}},
     )
 

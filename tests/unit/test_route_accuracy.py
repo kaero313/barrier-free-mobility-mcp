@@ -15,7 +15,11 @@ from app.services.route_accuracy import (
     route_line_summary,
     route_station_summary,
 )
-from app.services.route_service import route_cache_key, route_search_cache_scope
+from app.services.route_service import (
+    build_route_request_params,
+    route_cache_key,
+    route_search_cache_scope,
+)
 
 FIXTURE_DIR = Path(__file__).resolve().parents[1] / "fixtures"
 MOCK_ROUTE_FIXTURE = Path(__file__).resolve().parents[2] / "app" / "data" / "mock_responses"
@@ -125,3 +129,51 @@ def test_route_cache_scope_handles_disabled_search_date_param() -> None:
     settings = Settings(route_search_date_param="")
 
     assert route_search_cache_scope(settings) == "no-search-date"
+
+
+def test_route_request_uses_station_codes_when_both_are_available() -> None:
+    settings = Settings(_env_file=None)
+
+    params = build_route_request_params(
+        "홍대입구",
+        "삼성",
+        settings,
+        origin_station_code="0239",
+        destination_station_code="0219",
+    )
+
+    assert params == {
+        "origin": "0239",
+        "destination": "0219",
+        "station_value_type": "code",
+    }
+
+
+def test_route_request_falls_back_to_names_when_a_station_code_is_missing() -> None:
+    settings = Settings(_env_file=None)
+
+    params = build_route_request_params(
+        "홍대입구",
+        "삼성",
+        settings,
+        origin_station_code="0239",
+    )
+
+    assert params == {"origin": "홍대입구", "destination": "삼성"}
+
+
+def test_route_cache_key_separates_code_and_name_queries() -> None:
+    settings = Settings(route_default_search_date="2026-07-14 09:00:00")
+
+    name_key = route_cache_key("홍대입구", "삼성", settings)
+    code_key = route_cache_key(
+        "홍대입구",
+        "삼성",
+        settings,
+        origin_station_code="0239",
+        destination_station_code="0219",
+    )
+
+    assert name_key != code_key
+    assert "route:name:홍대입구:삼성" in name_key
+    assert "route:code:0239:0219" in code_key

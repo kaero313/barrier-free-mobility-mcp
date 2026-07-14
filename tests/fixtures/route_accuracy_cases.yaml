@@ -1,7 +1,9 @@
 strict_cases:
   - name: hongdae_to_samsung_line2_direct
     origin: "홍대입구"
+    origin_line: "2"
     destination: "삼성"
+    destination_line: "2"
     expected_transfer_count: 0
     expected_lines: ["2"]
     expected_first_station: "홍대입구"
@@ -11,7 +13,9 @@ strict_cases:
 
   - name: seoul_to_cityhall_line1_direct
     origin: "서울역"
+    origin_line: "1"
     destination: "시청"
+    destination_line: "1"
     expected_transfer_count: 0
     expected_lines: ["1"]
     expected_first_station: "서울역"
@@ -20,7 +24,9 @@ strict_cases:
 
   - name: express_terminal_to_yeouido_line9_direct
     origin: "고속터미널"
+    origin_line: "9"
     destination: "여의도"
+    destination_line: "9"
     expected_transfer_count: 0
     expected_lines: ["9"]
     expected_first_station: "고속터미널"
@@ -29,7 +35,9 @@ strict_cases:
 
   - name: sadang_to_ddp_line4_direct
     origin: "사당"
+    origin_line: "4"
     destination: "동대문역사문화공원"
+    destination_line: "4"
     expected_transfer_count: 0
     expected_lines: ["4"]
     expected_first_station: "사당"

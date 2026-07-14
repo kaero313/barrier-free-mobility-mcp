@@ -12,7 +12,14 @@ from app.services.types import ServiceResult
 
 
 class _MultiStationRouteService:
-    async def get_route_candidates(self, origin: str, destination: str):
+    async def get_route_candidates(
+        self,
+        origin: str,
+        destination: str,
+        *,
+        origin_station_code: str | None = None,
+        destination_station_code: str | None = None,
+    ):
         return ServiceResult(
             value=[
                 RouteCandidate(

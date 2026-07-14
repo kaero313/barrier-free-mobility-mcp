@@ -3,8 +3,44 @@ from __future__ import annotations
 from app.normalizers.helpers import normalize_line_name
 from app.schemas.accessibility import MobilityProfile
 from app.schemas.common import ResponseStatus
+from app.schemas.route import RouteCandidate, RouteSegment
 from app.services.accessibility_service import AccessibilityService
 from app.services.facility_service import FacilityService
+from app.services.types import ServiceResult
+
+
+class _WrongOriginLineRouteService:
+    async def get_route_candidates(
+        self,
+        origin: str,
+        destination: str,
+        *,
+        origin_station_code: str | None = None,
+        destination_station_code: str | None = None,
+    ) -> ServiceResult[list[RouteCandidate]]:
+        return ServiceResult(
+            value=[
+                RouteCandidate(
+                    route_id="wrong-origin-line",
+                    origin=origin,
+                    destination=destination,
+                    transfer_count=1,
+                    stations=[origin, "공덕", destination],
+                    segments=[
+                        RouteSegment(
+                            from_station=origin,
+                            to_station="공덕",
+                            line="경의선",
+                        ),
+                        RouteSegment(
+                            from_station="공덕",
+                            to_station=destination,
+                            line="2호선",
+                        ),
+                    ],
+                )
+            ]
+        )
 
 
 async def test_facility_service_resolves_embedded_line_in_station_query() -> None:
@@ -97,3 +133,17 @@ async def test_accessible_trip_keeps_ambiguous_transfer_station_clarification() 
 
     assert result.status == ResponseStatus.NEEDS_CLARIFICATION
     assert result.clarification_needed is True
+
+
+async def test_accessible_trip_rejects_route_with_mismatched_endpoint_line() -> None:
+    service = AccessibilityService(route_service=_WrongOriginLineRouteService())
+
+    result = await service.check_accessible_trip(
+        "2호선 홍대입구",
+        "2호선 삼성",
+        MobilityProfile(wheelchair=True, can_use_stairs=False, need_elevator_only=True),
+    )
+
+    assert result.status == ResponseStatus.FAILED
+    assert result.selected_route is None
+    assert any("일치하지 않은 경로 후보" in item for item in result.limitations)

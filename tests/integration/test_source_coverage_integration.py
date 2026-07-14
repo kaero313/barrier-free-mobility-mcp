@@ -15,6 +15,9 @@ class _LineNineRouteService:
         self,
         origin: str,
         destination: str,
+        *,
+        origin_station_code: str | None = None,
+        destination_station_code: str | None = None,
     ) -> ServiceResult[list[RouteCandidate]]:
         return ServiceResult(
             value=[

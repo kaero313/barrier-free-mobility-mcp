@@ -35,8 +35,24 @@ class _FacilityServiceStub:
 class _RouteServiceStub:
     def __init__(self, result: ServiceResult[list[RouteCandidate]]) -> None:
         self.result = result
+        self.calls: list[dict[str, str | None]] = []
 
-    async def get_route_candidates(self, origin: str, destination: str):
+    async def get_route_candidates(
+        self,
+        origin: str,
+        destination: str,
+        *,
+        origin_station_code: str | None = None,
+        destination_station_code: str | None = None,
+    ):
+        self.calls.append(
+            {
+                "origin": origin,
+                "destination": destination,
+                "origin_station_code": origin_station_code,
+                "destination_station_code": destination_station_code,
+            }
+        )
         return self.result
 
 
@@ -135,7 +151,7 @@ async def test_individual_tool_preserves_stale_fallback_data_and_failure() -> No
 
 async def test_route_tool_preserves_failure_instead_of_returning_empty_list() -> None:
     failed = FailedSource(source_name="shortest_route", reason="timeout")
-    tools._route_service = _RouteServiceStub(
+    route_service = _RouteServiceStub(
         ServiceResult(
             value=[],
             data_sources=[_source(source_name="shortest_route", success=False)],
@@ -143,6 +159,7 @@ async def test_route_tool_preserves_failure_instead_of_returning_empty_list() ->
             limitations=["최단경로 후보 정보를 확인하지 못했습니다."],
         )
     )
+    tools._route_service = route_service
 
     result = await tools.get_route_candidates("홍대입구", "삼성")
 
@@ -151,6 +168,30 @@ async def test_route_tool_preserves_failure_instead_of_returning_empty_list() ->
     assert result.outcome == LookupOutcome.FAILED
     assert result.data == []
     assert result.failed_sources == [failed]
+    assert route_service.calls == [
+        {
+            "origin": "홍대입구",
+            "destination": "삼성",
+            "origin_station_code": "0239",
+            "destination_station_code": "0219",
+        }
+    ]
+
+
+async def test_route_tool_uses_route_api_codes_instead_of_generic_station_ids() -> None:
+    route_service = _RouteServiceStub(ServiceResult(value=[]))
+    tools._route_service = route_service
+
+    await tools.get_route_candidates("9호선 고속터미널", "9호선 여의도")
+
+    assert route_service.calls == [
+        {
+            "origin": "9호선 고속터미널",
+            "destination": "9호선 여의도",
+            "origin_station_code": "4123",
+            "destination_station_code": "4115",
+        }
+    ]
 
 
 def _source(

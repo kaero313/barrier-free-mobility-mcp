@@ -12,7 +12,14 @@ from app.services.types import ServiceResult
 
 
 class _EmptyRouteService:
-    async def get_route_candidates(self, origin: str, destination: str) -> ServiceResult[list]:
+    async def get_route_candidates(
+        self,
+        origin: str,
+        destination: str,
+        *,
+        origin_station_code: str | None = None,
+        destination_station_code: str | None = None,
+    ) -> ServiceResult[list]:
         return ServiceResult(value=[])
 
 
@@ -21,6 +28,9 @@ class _InvalidRouteService:
         self,
         origin: str,
         destination: str,
+        *,
+        origin_station_code: str | None = None,
+        destination_station_code: str | None = None,
     ) -> ServiceResult[list[RouteCandidate]]:
         return ServiceResult(
             value=[

@@ -16,6 +16,9 @@ class _CandidateRouteService:
         self,
         origin: str,
         destination: str,
+        *,
+        origin_station_code: str | None = None,
+        destination_station_code: str | None = None,
     ) -> ServiceResult[list[RouteCandidate]]:
         return ServiceResult(
             value=[
@@ -31,13 +34,18 @@ class _CandidateRouteService:
                         ),
                         RouteSegment(
                             from_station="교대",
-                            to_station=destination,
+                            to_station="고속터미널",
                             line="3호선",
+                        ),
+                        RouteSegment(
+                            from_station="고속터미널",
+                            to_station=destination,
+                            line="2호선",
                         ),
                     ],
                     transfer_count=1,
                     estimated_minutes=10,
-                    stations=[origin, "교대", destination],
+                    stations=[origin, "교대", "고속터미널", destination],
                     raw_summary="교대 환승 빠른 경로",
                 ),
                 RouteCandidate(

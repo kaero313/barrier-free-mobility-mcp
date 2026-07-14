@@ -25,6 +25,11 @@ def test_public_data_clients_use_public_data_service_key() -> None:
     assert route.api_key == "PUBLIC"
     assert route.api_key_field == "serviceKey"
     assert route.endpoint_url == "https://example.test/route/getShtrmPath2"
+    assert route.param_aliases == {
+        "origin": "dptreStn",
+        "destination": "arvlStn",
+        "station_value_type": "stationValueType",
+    }
     assert "searchDt" in route.default_params
 
 
