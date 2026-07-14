@@ -3,9 +3,47 @@ from __future__ import annotations
 from app.core.config import AppMode, CacheBackend, Settings
 from app.mcp import tools
 from app.mcp.tools import TOOL_DESCRIPTIONS
-from app.schemas.accessibility import MobilityProfile
+from app.schemas.accessibility import AccessibilityEvidenceStatus, MobilityProfile
 from app.schemas.common import CacheStatus, ResponseStatus
+from app.schemas.lookup import LookupOutcome
+from app.schemas.route import RouteCandidate
 from app.services.accessibility_service import AccessibilityService
+from app.services.types import ServiceResult
+
+
+class _EmptyRouteService:
+    async def get_route_candidates(self, origin: str, destination: str) -> ServiceResult[list]:
+        return ServiceResult(value=[])
+
+
+class _InvalidRouteService:
+    async def get_route_candidates(
+        self,
+        origin: str,
+        destination: str,
+    ) -> ServiceResult[list[RouteCandidate]]:
+        return ServiceResult(
+            value=[
+                RouteCandidate(
+                    route_id="invalid-empty-segments",
+                    origin=origin,
+                    destination=destination,
+                    segments=[],
+                    stations=[origin, destination],
+                )
+            ]
+        )
+
+
+class _FailIfCalledFacilityService:
+    async def get_station_facilities(self, station: str, line: str | None = None) -> None:
+        raise AssertionError("facility lookup must not run without a valid route")
+
+    async def get_elevator_status(self, station: str, line: str | None = None) -> None:
+        raise AssertionError("elevator lookup must not run without a valid route")
+
+    async def get_accessible_restroom(self, station: str, line: str | None = None) -> None:
+        raise AssertionError("restroom lookup must not run without a valid route")
 
 
 async def test_mock_mode_tools_return_structured_models() -> None:
@@ -34,10 +72,15 @@ async def test_mock_mode_tools_return_structured_models() -> None:
     )
 
     assert station.matched_station is not None
-    assert facilities
-    assert elevators
-    assert restrooms
-    assert routes
+    assert facilities.data
+    assert elevators.data
+    assert restrooms.data
+    assert routes.data
+    assert facilities.status == ResponseStatus.SUCCESS
+    assert facilities.outcome == LookupOutcome.DATA
+    assert elevators.outcome == LookupOutcome.DATA
+    assert restrooms.outcome == LookupOutcome.DATA
+    assert routes.outcome == LookupOutcome.DATA
     assert trip.status == ResponseStatus.SUCCESS
     assert trip.selected_route is not None
     assert len(trip.accessible_facilities) <= len(trip.selected_route.stations)
@@ -59,18 +102,32 @@ async def test_mock_mode_tools_return_structured_models() -> None:
     assert trip.user_message
     assert trip.user_message_summary.headline
     assert trip.accessibility_checks
+    assert all(check.elevator_details for check in trip.accessibility_checks)
     assert any(check.role == "origin" for check in trip.accessibility_checks)
     assert any(check.role == "destination" for check in trip.accessibility_checks)
-    assert "판단: 가능" in trip.user_message
-    assert "필요한 접근성 정보가 확인되었습니다" in trip.user_message
-    assert "이유" in trip.user_message
-    assert "추천 경로" in trip.user_message
-    assert "접근성 체크" in trip.user_message
-    assert "사용자 조건 반영" in trip.user_message
+    assert all(
+        check.station_has_elevator == AccessibilityEvidenceStatus.CONFIRMED
+        for check in trip.accessibility_checks
+    )
+    assert all(
+        check.platform_to_concourse_verified == AccessibilityEvidenceStatus.CONFIRMED
+        for check in trip.accessibility_checks
+    )
+    assert trip.user_message.startswith("**출발 전에 확인이 필요합니다.**")
+    assert "엘리베이터는 현재 운행 중" in trip.user_message
+    assert "엘리베이터만으로 이어지는지는" in trip.user_message
+    assert "역별 확인 결과" in trip.user_message
+    assert "지금 할 일" in trip.user_message
+    assert "### 이유" not in trip.user_message
+    assert "### 출발 전 확인" not in trip.user_message
+    assert "추천 경로" not in trip.user_message
+    assert "사용자 조건 반영" not in trip.user_message
     assert "기준 시각" in trip.user_message
     assert "전체 조회 시각" in trip.user_message
     assert "최단경로 정보" in trip.user_message
     assert "엘리베이터 위치·운행상태" in trip.user_message
+    assert "실제 이용 승강장과 맞는지 확인 필요" not in trip.user_message
+    assert "출구까지 연결 확인 필요" in trip.user_message
     assert "주의사항" in trip.user_message
     assert "예상" not in trip.user_message
     assert "risk_level" not in trip.user_message
@@ -100,8 +157,74 @@ async def test_partial_failure_includes_failed_sources_and_limitations() -> None
     assert result.evidence_sources
     assert any("승강기_가동현황" in part for part in result.unverified_parts)
     assert result.user_message
-    assert "안내하기 어렵습니다" in result.user_message
+    assert "이용 여부를 판단할 수 없습니다" in result.user_message
     assert "출발 직전 재확인" in result.user_message
+
+
+async def test_trip_with_no_valid_route_returns_failed_unknown() -> None:
+    service = AccessibilityService(
+        route_service=_EmptyRouteService(),
+        facility_service=_FailIfCalledFacilityService(),
+    )
+
+    result = await service.check_accessible_trip(
+        "1호선 서울역",
+        "2호선 삼성",
+        MobilityProfile(wheelchair=True, can_use_stairs=False, need_elevator_only=True),
+    )
+
+    assert result.status == ResponseStatus.FAILED
+    assert result.risk_level == "UNKNOWN"
+    assert result.selected_route is None
+    assert result.user_message_summary.judgement == "확인 불가"
+    assert "이용 여부를 판단할 수 없습니다" in result.user_message
+    assert "현재 확인된 정보에서는 이동을 막는 문제가 없습니다" not in result.user_message
+
+
+async def test_trip_rejects_route_candidate_without_segments() -> None:
+    service = AccessibilityService(
+        route_service=_InvalidRouteService(),
+        facility_service=_FailIfCalledFacilityService(),
+    )
+
+    result = await service.check_accessible_trip(
+        "1호선 서울역",
+        "2호선 삼성",
+        MobilityProfile(wheelchair=True),
+    )
+
+    assert result.status == ResponseStatus.FAILED
+    assert result.risk_level == "UNKNOWN"
+    assert result.selected_route is None
+
+
+async def test_trip_with_wrong_explicit_line_requests_clarification() -> None:
+    service = AccessibilityService(
+        route_service=_EmptyRouteService(),
+        facility_service=_FailIfCalledFacilityService(),
+    )
+
+    result = await service.check_accessible_trip(
+        "9호선 삼성",
+        "2호선 강남",
+        MobilityProfile(wheelchair=True),
+    )
+
+    assert result.status == ResponseStatus.NEEDS_CLARIFICATION
+    assert result.risk_level == "UNKNOWN"
+    assert result.selected_route is None
+    assert any("삼성" in question and "2호선" in question for question in result.questions)
+
+
+async def test_natural_question_with_wrong_line_explains_station_line_mismatch() -> None:
+    response = await AccessibilityService().answer_accessibility_question(
+        "휠체어로 9호선 삼성역에서 2호선 강남역까지 갈 수 있어?"
+    )
+
+    assert response.status == ResponseStatus.NEEDS_CLARIFICATION
+    assert response.clarification_needed is True
+    assert response.result is None
+    assert "입력한 역과 호선 조합" in response.user_message
 
 
 async def test_cache_hit_metadata_is_reported() -> None:

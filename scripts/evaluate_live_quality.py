@@ -24,6 +24,30 @@ from app.services.accessibility_service import AccessibilityService  # noqa: E40
 
 CASE_FILE = PROJECT_ROOT / "tests" / "fixtures" / "user_question_cases.yaml"
 TECHNICAL_TERMS = ("risk_level", "confidence_level", "cache", "payload")
+FACILITY_REQUIRED_SECTIONS = [
+    "확인 결과:",
+    "역·호선",
+    "시설 정보",
+    "기준 시각",
+    "주의사항",
+]
+STATION_ALTERNATIVE_REQUIRED_SECTIONS = [
+    "확인 결과:",
+    "역·호선",
+    "현재 시설 상태",
+    "대체 가능한 시설",
+    "기준 시각",
+    "한계·주의사항",
+]
+ROUTE_ALTERNATIVE_REQUIRED_SECTIONS = [
+    "판단:",
+    "대안 요청 조건",
+    "추천 대안",
+    "접근성 근거",
+    "다른 후보",
+    "기준 시각",
+    "주의사항",
+]
 
 
 @dataclass(frozen=True)
@@ -86,7 +110,7 @@ def select_cases(
 def is_basic_live_case(case: dict[str, Any]) -> bool:
     execution = case.get("execution", {})
     expectations = case.get("expectations", {})
-    return execution.get("kind") == "trip_brief" or (
+    return execution.get("kind") in {"trip_brief", "natural_language_question"} or (
         execution.get("kind") == "future_natural_language"
         and expectations.get("future_reason") == "place_candidate_clarification_supported"
     )
@@ -131,15 +155,49 @@ def summarize_response(
 ) -> EvaluationSummary:
     user_message = response.user_message or ""
     result = response.result
-    risk_level = result.risk_level if result else "UNKNOWN"
-    failed_source_count = len(result.failed_sources) if result else 0
-    unverified_count = len(result.unverified_parts) if result else 0
-    require_full_sections = result is not None and not response.clarification_needed
+    facility_result = response.facility_result
+    is_facility = response.intent == "facility_status"
+    is_alternative = response.intent == "alternative_request"
+    is_station_alternative = is_alternative and (
+        facility_result is not None
+        or str(response.parsed.alternative_request_kind) == "station_facility"
+    )
+    risk_level = result.risk_level if result else "N/A" if facility_result else "UNKNOWN"
+    failed_source_count = len(
+        result.failed_sources
+        if result
+        else facility_result.failed_sources
+        if facility_result
+        else []
+    )
+    unverified_count = len(
+        result.unverified_parts
+        if result
+        else facility_result.unverified_parts
+        if facility_result
+        else []
+    )
+    require_full_sections = (
+        result is not None or facility_result is not None
+    ) and not response.clarification_needed
+    if is_station_alternative:
+        quality_sections = STATION_ALTERNATIVE_REQUIRED_SECTIONS
+        required_lead = "확인 결과:"
+    elif is_alternative:
+        quality_sections = ROUTE_ALTERNATIVE_REQUIRED_SECTIONS
+        required_lead = "판단:"
+    elif is_facility:
+        quality_sections = FACILITY_REQUIRED_SECTIONS
+        required_lead = "확인 결과:"
+    else:
+        quality_sections = required_sections
+        required_lead = None
     issues = evaluate_user_message_quality(
         user_message,
-        required_sections=required_sections,
+        required_sections=quality_sections,
         banned_phrases=banned_phrases,
         require_full_sections=require_full_sections,
+        required_lead=required_lead,
     )
     payload_bytes = len(response.model_dump_json(exclude_none=True).encode("utf-8"))
 
@@ -192,13 +250,14 @@ def evaluate_user_message_quality(
     required_sections: list[str],
     banned_phrases: list[str],
     require_full_sections: bool,
+    required_lead: str | None = "판단:",
 ) -> list[str]:
     issues: list[str] = []
     if not user_message.strip():
         issues.append("missing_user_message")
         return issues
-    if "판단:" not in user_message:
-        issues.append("missing_section:판단:")
+    if required_lead and required_lead not in user_message:
+        issues.append(f"missing_section:{required_lead}")
     if require_full_sections:
         for section in required_sections:
             if section not in user_message:
@@ -218,9 +277,23 @@ def evaluate_user_message_quality(
 def extract_judgement(response: AccessibilityQuestionResult) -> str:
     if response.result and response.result.user_message_summary.judgement:
         return response.result.user_message_summary.judgement
+    first_line = ""
     for line in response.user_message.splitlines():
-        if line.startswith("판단:"):
-            return line.split(":", 1)[1].strip()
+        normalized = line.strip().strip("*").strip()
+        if normalized and not first_line:
+            first_line = normalized
+        if normalized.startswith(("판단:", "확인 결과:")):
+            return normalized.split(":", 1)[1].strip().strip("*").strip()
+    if "한 가지만 더 알려주세요" in first_line:
+        return "추가 정보 필요"
+    if "이용 여부를 판단할 수 없습니다" in first_line:
+        return "확인 불가"
+    if "이용을 권장하지 않습니다" in first_line:
+        return "권장하지 않음"
+    if "출발 전에 확인이 필요합니다" in first_line:
+        return "주의 필요"
+    if "이용할 수 있습니다" in first_line:
+        return "가능"
     return ""
 
 

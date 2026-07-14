@@ -14,11 +14,14 @@ from app.schemas.accessibility import (
     AccessibilityResult,
     MobilityProfile,
 )
-from app.schemas.facility import AccessibleFacility
-from app.schemas.route import RouteCandidate
+from app.schemas.lookup import FacilityLookupResult, RouteLookupResult
 from app.schemas.station import StationResolutionResult
 from app.services.accessibility_service import AccessibilityService
 from app.services.facility_service import FacilityService
+from app.services.lookup_result import (
+    build_facility_lookup_result,
+    build_route_lookup_result,
+)
 from app.services.route_service import RouteService
 from app.services.station_service import StationService
 
@@ -30,25 +33,42 @@ _accessibility_service: AccessibilityService | None = None
 
 TOOL_DESCRIPTIONS = {
     "resolve_station": "Resolve a Seoul subway station name, line-aware name, or alias.",
-    "get_station_facilities": "Return normalized station accessibility facilities.",
-    "get_elevator_status": "Return normalized elevator operation status.",
-    "get_accessible_restroom": "Return normalized accessible restroom information.",
-    "get_route_candidates": "Return normalized subway route candidates.",
+    "get_station_facilities": (
+        "Return a versioned FacilityLookupResult. Read normalized facilities from data; "
+        "use status, outcome, failed_sources, limitations, and data_sources to distinguish "
+        "empty results, failures, unsupported coverage, and stale fallback."
+    ),
+    "get_elevator_status": (
+        "Return a versioned FacilityLookupResult with elevator records in data and "
+        "structured metadata for empty, failed, unsupported, partial, or stale results."
+    ),
+    "get_accessible_restroom": (
+        "Return a versioned FacilityLookupResult with accessible-restroom records in data "
+        "and structured metadata describing result completeness."
+    ),
+    "get_route_candidates": (
+        "Return a versioned RouteLookupResult with route candidates in data and structured "
+        "metadata for empty, failed, partial, or stale results."
+    ),
     "check_accessible_trip": (
         "Structured accessibility risk check. The result includes user_message, but "
         "generate_accessibility_brief is preferred for end-user final answers."
     ),
     "generate_accessibility_brief": (
         "LLM-facing final-answer tool. Return the result.user_message field verbatim "
-        "to the end user whenever possible. Use accessibility_checks, evidence_sources, "
-        "failed_sources, and limitations only as supporting evidence."
+        "to the end user whenever possible, preserving its Markdown headings, lists, "
+        "and compact tables without wrapping them in a code block. Use "
+        "accessibility_checks, evidence_sources, failed_sources, and limitations only "
+        "as supporting evidence."
     ),
     "answer_accessibility_question": (
         "Preferred LLM-facing tool for ordinary Korean natural-language accessibility "
-        "questions. Return the result.user_message field verbatim to the end user "
-        "whenever possible. This deterministic tool handles route accessibility "
-        "questions first and asks for clarification when station names, lines, or "
-        "mobility conditions are missing."
+        "questions. Return the top-level user_message field verbatim to the end user "
+        "whenever possible, preserving its Markdown headings, lists, and compact tables "
+        "without wrapping them in a code block. This deterministic tool handles route "
+        "accessibility and station elevator or accessible-restroom questions, including "
+        "confirmed station facility and route alternatives. It asks for clarification "
+        "when required station, line, facility, route, or mobility information is missing."
     ),
 }
 
@@ -59,6 +79,12 @@ def reset_tool_services() -> None:
     _facility_service = None
     _route_service = None
     _accessibility_service = None
+
+
+def configure_tool_cache(cache: CacheProtocol) -> None:
+    global _cache
+    reset_tool_services()
+    _cache = cache
 
 
 def _get_cache() -> CacheProtocol:
@@ -107,49 +133,90 @@ async def resolve_station(query: str) -> StationResolutionResult:
 async def get_station_facilities(
     station: str,
     line: str | None = None,
-) -> list[AccessibleFacility]:
-    """Return normalized station accessibility facilities."""
+) -> FacilityLookupResult:
+    """Return facilities and structured lookup completeness metadata."""
     _validate_text_inputs(station=station, line=line)
+
+    async def operation() -> FacilityLookupResult:
+        service_result = await _get_facility_service().get_station_facilities(
+            station,
+            line,
+        )
+        return build_facility_lookup_result(
+            station=station,
+            line=line,
+            service_result=service_result,
+        )
+
     return await _track_tool_call(
         "get_station_facilities",
-        lambda: _get_facility_service().get_station_facilities(station, line),
-        extract_value=True,
+        operation,
     )
 
 
 async def get_elevator_status(
     station: str,
     line: str | None = None,
-) -> list[AccessibleFacility]:
-    """Return normalized elevator operation status."""
+) -> FacilityLookupResult:
+    """Return elevator records and structured lookup completeness metadata."""
     _validate_text_inputs(station=station, line=line)
+
+    async def operation() -> FacilityLookupResult:
+        service_result = await _get_facility_service().get_elevator_status(station, line)
+        return build_facility_lookup_result(
+            station=station,
+            line=line,
+            service_result=service_result,
+        )
+
     return await _track_tool_call(
         "get_elevator_status",
-        lambda: _get_facility_service().get_elevator_status(station, line),
-        extract_value=True,
+        operation,
     )
 
 
 async def get_accessible_restroom(
     station: str,
     line: str | None = None,
-) -> list[AccessibleFacility]:
-    """Return normalized accessible restroom information."""
+) -> FacilityLookupResult:
+    """Return restroom records and structured lookup completeness metadata."""
     _validate_text_inputs(station=station, line=line)
+
+    async def operation() -> FacilityLookupResult:
+        service_result = await _get_facility_service().get_accessible_restroom(
+            station,
+            line,
+        )
+        return build_facility_lookup_result(
+            station=station,
+            line=line,
+            service_result=service_result,
+        )
+
     return await _track_tool_call(
         "get_accessible_restroom",
-        lambda: _get_facility_service().get_accessible_restroom(station, line),
-        extract_value=True,
+        operation,
     )
 
 
-async def get_route_candidates(origin: str, destination: str) -> list[RouteCandidate]:
-    """Return normalized route candidates."""
+async def get_route_candidates(origin: str, destination: str) -> RouteLookupResult:
+    """Return route candidates and structured lookup completeness metadata."""
     _validate_text_inputs(origin=origin, destination=destination)
+
+    async def operation() -> RouteLookupResult:
+        service_result = await _get_route_service().get_route_candidates(
+            origin,
+            destination,
+        )
+        return build_route_lookup_result(
+            origin=origin,
+            destination=destination,
+            service_result=service_result,
+        )
+
     return await _track_tool_call(
         "get_route_candidates",
-        lambda: _get_route_service().get_route_candidates(origin, destination),
-        extract_value=True,
+        operation,
     )
 
 
@@ -172,7 +239,7 @@ async def generate_accessibility_brief(
     destination: str,
     mobility_profile: MobilityProfile,
 ) -> AccessibilityResult:
-    """Final-answer tool for LLM clients; display result.user_message verbatim."""
+    """Final-answer tool; preserve result.user_message Markdown and display it verbatim."""
     _validate_text_inputs(origin=origin, destination=destination)
     profile = MobilityProfile.model_validate(mobility_profile)
     return await _track_tool_call(
@@ -186,7 +253,7 @@ async def generate_accessibility_brief(
 
 
 async def answer_accessibility_question(question: str) -> AccessibilityQuestionResult:
-    """Final-answer tool for ordinary natural-language accessibility questions."""
+    """Final-answer tool for natural-language questions; preserve user_message Markdown."""
     _validate_text_inputs(question=question)
     return await _track_tool_call(
         "answer_accessibility_question",
@@ -222,15 +289,13 @@ def _validate_text_inputs(**fields: str | None) -> None:
 async def _track_tool_call[T](
     tool_name: str,
     operation: Callable[[], T | Awaitable[T]],
-    *,
-    extract_value: bool = False,
 ) -> Any:
     started = perf_counter()
     try:
         result = operation()
         if inspect.isawaitable(result):
             result = await result
-        response = result.value if extract_value else result
+        response = result
     except Exception:
         metrics_registry.record_tool_call(
             tool_name,

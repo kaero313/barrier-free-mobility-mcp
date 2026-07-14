@@ -1,11 +1,7 @@
 version: 1
 
 required_sections:
-  - "판단:"
-  - "이유"
-  - "추천 경로"
-  - "접근성 체크"
-  - "사용자 조건 반영"
+  - "확인 결과"
   - "기준 시각"
   - "주의사항"
 
@@ -30,14 +26,15 @@ cases:
         max_transfer_count: 1
     expectations:
       status: "SUCCESS"
-      risk_level: "LOW"
-      judgement: "가능"
+      risk_level: "CAUTION"
+      judgement: "주의 필요"
       clarification_needed: false
       contains:
-        - "판단: 가능"
         - "홍대입구"
         - "삼성"
-        - "엘리베이터 확인"
+        - "현재 운행 중"
+        - "연결 확인 필요"
+        - "지금 할 일"
         - "기준 시각"
       not_contains:
         - "risk_level"
@@ -58,13 +55,13 @@ cases:
         max_transfer_count: 1
     expectations:
       status: "SUCCESS"
-      risk_level: "LOW"
-      judgement: "가능"
+      risk_level: "CAUTION"
+      judgement: "주의 필요"
       clarification_needed: false
       contains:
-        - "판단: 가능"
-        - "유모차 이용 조건"
-        - "계단 이용 불가 조건"
+        - "연결 확인 필요"
+        - "엘리베이터만으로 이어지는지"
+        - "지금 할 일"
         - "홍대입구"
         - "삼성"
       not_contains:
@@ -89,13 +86,12 @@ cases:
         max_transfer_count: 1
     expectations:
       status: "SUCCESS"
-      risk_level: "LOW"
-      judgement: "가능"
+      risk_level: "CAUTION"
+      judgement: "주의 필요"
       clarification_needed: false
       contains:
-        - "판단: 가능"
         - "장애인화장실"
-        - "도착역 확인 조건"
+        - "도착역:"
         - "삼성"
       not_contains:
         - "risk_level"
@@ -104,7 +100,7 @@ cases:
 
   - name: hongdae_to_samsung_restroom_any_route_station
     category: restroom_required
-    question: "홍대입구에서 삼성 가는 길에 장애인화장실이 한 곳이라도 있으면 괜찮아."
+    question: "휠체어로 홍대입구에서 삼성 가는 길에 장애인화장실이 한 곳이라도 있으면 괜찮아."
     execution:
       kind: trip_brief
       origin: "홍대입구"
@@ -119,11 +115,10 @@ cases:
         max_transfer_count: 1
     expectations:
       status: "SUCCESS"
-      risk_level: "LOW"
-      judgement: "가능"
+      risk_level: "CAUTION"
+      judgement: "주의 필요"
       clarification_needed: false
       contains:
-        - "판단: 가능"
         - "장애인화장실"
         - "홍대입구"
         - "삼성"
@@ -147,14 +142,15 @@ cases:
         max_transfer_count: 1
     expectations:
       status: "SUCCESS"
-      risk_level: "LOW"
-      judgement: "가능"
+      risk_level: "CAUTION"
+      judgement: "주의 필요"
       clarification_needed: false
       contains:
-        - "판단: 가능"
         - "서울역"
         - "시청"
-        - "엘리베이터 확인"
+        - "현재 운행 중"
+        - "연결 확인 필요"
+        - "지금 할 일"
       not_contains:
         - "risk_level"
         - "confidence_level"
@@ -174,12 +170,12 @@ cases:
         max_transfer_count: 1
     expectations:
       status: "SUCCESS"
-      risk_level: "LOW"
-      judgement: "가능"
+      risk_level: "CAUTION"
+      judgement: "주의 필요"
       clarification_needed: false
       contains:
-        - "판단: 가능"
-        - "유모차 이용 조건"
+        - "연결 확인 필요"
+        - "지금 할 일"
         - "서울역"
         - "시청"
       not_contains:
@@ -202,14 +198,15 @@ cases:
         max_transfer_count: 1
     expectations:
       status: "SUCCESS"
-      risk_level: "LOW"
-      judgement: "가능"
+      risk_level: "CAUTION"
+      judgement: "주의 필요"
       clarification_needed: false
       contains:
-        - "판단: 가능"
         - "고속터미널"
         - "여의도"
-        - "엘리베이터 확인"
+        - "현재 운행 중"
+        - "연결 확인 필요"
+        - "지금 할 일"
       not_contains:
         - "risk_level"
         - "confidence_level"
@@ -238,7 +235,6 @@ cases:
       risk_reason_codes:
         - "no_accessible_restroom_when_required"
       contains:
-        - "판단: 주의 필요"
         - "여의도"
         - "장애인화장실 미확인"
         - "필수"
@@ -270,7 +266,6 @@ cases:
       risk_reason_codes:
         - "no_accessible_restroom_when_required"
       contains:
-        - "판단: 주의 필요"
         - "고속터미널"
         - "장애인화장실 미확인"
         - "필수"
@@ -300,10 +295,9 @@ cases:
       risk_reason_codes:
         - "elevator_unavailable"
       contains:
-        - "판단: 주의 필요"
         - "동대문역사문화공원"
         - "엘리베이터"
-        - "추가 확인"
+        - "지금 할 일"
       not_contains:
         - "risk_level"
         - "confidence_level"
@@ -330,7 +324,6 @@ cases:
       risk_reason_codes:
         - "elevator_not_found"
       contains:
-        - "판단: 주의 필요"
         - "건대입구"
         - "고속터미널"
         - "엘리베이터"
@@ -357,9 +350,8 @@ cases:
       judgement: "추가 정보 필요"
       clarification_needed: true
       contains:
-        - "판단: 추가 정보 필요"
         - "역명"
-        - "추가 정보 필요"
+        - "더 알려주세요"
       not_contains:
         - "risk_level"
         - "confidence_level"
@@ -383,9 +375,8 @@ cases:
       judgement: "추가 정보 필요"
       clarification_needed: true
       contains:
-        - "판단: 추가 정보 필요"
         - "역명"
-        - "추가 정보 필요"
+        - "더 알려주세요"
       not_contains:
         - "risk_level"
         - "confidence_level"
@@ -436,63 +427,129 @@ cases:
     category: facility_status
     question: "강남역 엘베 고장났어?"
     execution:
-      kind: future_natural_language
-      target_capability: "answer_accessibility_question"
+      kind: natural_language_question
     expectations:
-      future_reason: "requires_facility_question_routing"
-      expected_behavior: "강남역 엘리베이터 상태 조회로 라우팅한다."
+      status: "SUCCESS"
+      clarification_needed: false
+      facility_type: "ELEVATOR"
+      answer_state: "AVAILABLE"
       contains:
+        - "확인 결과: 정보 확인"
         - "강남"
         - "엘리베이터"
+        - "기준 시각"
+      not_contains:
+        - "risk_level"
+        - "시설이 없습니다"
 
   - name: jamsil_accessible_restroom_question
     category: facility_status
-    question: "잠실역 장애인화장실 어디 있어?"
+    question: "2호선 잠실역 장애인화장실 어디 있어?"
     execution:
-      kind: future_natural_language
-      target_capability: "answer_accessibility_question"
+      kind: natural_language_question
     expectations:
-      future_reason: "requires_facility_question_routing"
-      expected_behavior: "잠실역 장애인화장실 조회로 라우팅한다."
+      status: "SUCCESS"
+      clarification_needed: false
+      facility_type: "ACCESSIBLE_RESTROOM"
+      answer_state: "NOT_FOUND"
       contains:
         - "잠실"
         - "장애인화장실"
+        - "현재 공공데이터에서 시설을 확인하지 못했습니다"
+      not_contains:
+        - "장애인화장실이 없습니다"
+        - "risk_level"
+
+  - name: express_terminal_elevator_line_clarification
+    category: facility_status
+    question: "고속터미널역 엘리베이터 상태 알려줘."
+    execution:
+      kind: natural_language_question
+    expectations:
+      status: "NEEDS_CLARIFICATION"
+      clarification_needed: true
+      contains:
+        - "한 가지만 더 알려주세요"
+        - "고속터미널"
+        - "호선"
+      not_contains:
+        - "risk_level"
+
+  - name: generic_restroom_requires_confirmation
+    category: facility_status
+    question: "2호선 잠실역 화장실 어디 있어?"
+    execution:
+      kind: natural_language_question
+    expectations:
+      status: "NEEDS_CLARIFICATION"
+      clarification_needed: true
+      contains:
+        - "일반 화장실과 장애인화장실"
+        - "장애인화장실 정보를 확인할까요"
+      not_contains:
+        - "risk_level"
 
   - name: elevator_broken_alternative
     category: alternative_request
     question: "강남역 엘베 고장났는데 대안 있어?"
     execution:
-      kind: future_natural_language
-      target_capability: "answer_accessibility_question"
+      kind: natural_language_question
     expectations:
-      future_reason: "requires_alternative_route_intent"
-      expected_behavior: "승강기 상태와 대안 경로 의도를 함께 확인한다."
+      status: "SUCCESS"
+      clarification_needed: false
+      facility_type: "ELEVATOR"
+      answer_state: "AVAILABLE"
       contains:
+        - "확인 결과: 현재 고장 정보 없음"
         - "강남"
-        - "대안"
+        - "대체 가능한 시설"
+      not_contains:
+        - "risk_level"
+        - "안전하게 이동 가능합니다"
 
   - name: avoid_broken_elevator_route
     category: alternative_request
     question: "엘리베이터 고장난 역 피해서 갈 수 있어?"
     execution:
-      kind: future_natural_language
-      target_capability: "answer_accessibility_question"
+      kind: natural_language_question
     expectations:
-      future_reason: "requires_origin_destination_clarification"
-      expected_behavior: "출발역과 도착역을 추가 질문한다."
+      status: "NEEDS_CLARIFICATION"
+      clarification_needed: true
       contains:
         - "출발역"
         - "도착역"
+      not_contains:
+        - "risk_level"
 
   - name: current_route_elevator_issue
     category: alternative_request
     question: "현재 경로에서 승강기 문제 있는 역 있어?"
     execution:
-      kind: future_natural_language
-      target_capability: "answer_accessibility_question"
+      kind: natural_language_question
     expectations:
-      future_reason: "requires_route_context_or_trip_input"
-      expected_behavior: "현재 경로 정보가 없으면 추가 질문한다."
+      status: "NEEDS_CLARIFICATION"
+      clarification_needed: true
       contains:
-        - "경로"
-        - "승강기"
+        - "이전 대화의 경로를 저장하지 않습니다"
+        - "출발역"
+        - "도착역"
+      not_contains:
+        - "risk_level"
+
+  - name: hongdae_to_samsung_accessible_alternative
+    category: alternative_request
+    question: "휠체어로 홍대입구에서 삼성까지 환승 적은 대안 경로 알려줘."
+    execution:
+      kind: natural_language_question
+    expectations:
+      status: "SUCCESS"
+      clarification_needed: false
+      result_kind: "trip"
+      contains:
+        - "대안 요청 조건"
+        - "추천 대안"
+        - "다른 후보"
+        - "기준 시각"
+      not_contains:
+        - "risk_level"
+        - "confidence_level"

@@ -7,11 +7,14 @@ from app.normalizers.helpers import normalize_line_name
 from app.normalizers.station_normalizer import DEFAULT_STATION_NORMALIZER
 from app.schemas.accessibility import (
     AccessibleRestroomRequirement,
+    AlternativeRequestKind,
+    FacilityQuestionKind,
     MobilityProfile,
     ParsedAccessibilityQuestion,
     PlaceStationCandidate,
     QuestionIntent,
 )
+from app.schemas.facility import FacilityType
 from app.services.place_resolver import (
     ResolvedPlaceMention,
     compact_text,
@@ -24,6 +27,17 @@ LINE_PATTERN = re.compile(
     re.IGNORECASE,
 )
 TRANSFER_ONE_PATTERN = re.compile(r"환승\s*1\s*회")
+ACCESSIBLE_RESTROOM_PATTERN = re.compile(r"(?:장애인|휠체어)\s*화장실")
+ALTERNATIVE_TERMS = (
+    "대안",
+    "대체",
+    "피해서",
+    "다른 경로",
+    "다른 엘리베이터",
+    "다른 화장실",
+    "환승 적은",
+    "현재 경로",
+)
 
 
 @dataclass(frozen=True)
@@ -57,6 +71,36 @@ def parse_accessibility_question(question: str) -> AccessibilityQuestionParse:
     route_mentions = _route_mentions(station_mentions, place_mentions)
     profile, has_mobility_signal = _parse_mobility_profile(question)
     intent = _detect_intent(question, route_mentions)
+    facility_types = _parse_facility_types(question)
+    alternative_request_kind = (
+        _parse_alternative_request_kind(question, route_mentions, facility_types)
+        if intent == "alternative_request"
+        else None
+    )
+    if (
+        alternative_request_kind == AlternativeRequestKind.ROUTE
+        and FacilityType.ELEVATOR in facility_types
+        and not has_mobility_signal
+    ):
+        profile = profile.model_copy(
+            update={
+                "can_use_stairs": False,
+                "can_use_escalator": False,
+                "need_elevator_only": True,
+            }
+        )
+        has_mobility_signal = True
+    facility_question_kind = (
+        _parse_facility_question_kind(question)
+        if intent == "facility_status"
+        or alternative_request_kind == AlternativeRequestKind.STATION_FACILITY
+        else None
+    )
+    target_station, target_line = _facility_target(
+        intent,
+        route_mentions,
+        alternative_request_kind,
+    )
     station_mention_texts = [
         mention.query for mention in route_mentions if mention.query is not None
     ]
@@ -68,6 +112,10 @@ def parse_accessibility_question(question: str) -> AccessibilityQuestionParse:
         origin,
         destination,
         has_mobility_signal,
+        target_station,
+        facility_types,
+        alternative_request_kind,
+        generic_restroom=_has_generic_restroom_question(question, facility_types),
     )
 
     return AccessibilityQuestionParse(
@@ -75,6 +123,11 @@ def parse_accessibility_question(question: str) -> AccessibilityQuestionParse:
         parsed=ParsedAccessibilityQuestion(
             origin=origin,
             destination=destination,
+            target_station=target_station,
+            target_line=target_line,
+            facility_types=facility_types,
+            facility_question_kind=facility_question_kind,
+            alternative_request_kind=alternative_request_kind,
             mobility_profile=profile,
             station_mentions=station_mention_texts,
             place_mentions=[
@@ -244,7 +297,7 @@ def _parse_mobility_profile(question: str) -> tuple[MobilityProfile, bool]:
         profile.can_use_stairs = False
         profile.can_use_escalator = False
         has_signal = True
-    if _contains_any(question, "장애인화장실", "휠체어 화장실"):
+    if ACCESSIBLE_RESTROOM_PATTERN.search(question):
         profile.need_accessible_restroom = True
         profile.accessible_restroom_requirement = _restroom_requirement(question)
         has_signal = True
@@ -271,11 +324,64 @@ def _restroom_requirement(question: str) -> AccessibleRestroomRequirement:
     return AccessibleRestroomRequirement.ALL_KEY_STATIONS
 
 
+def _parse_facility_types(question: str) -> list[FacilityType]:
+    facility_types: list[FacilityType] = []
+    if _contains_any(question, "엘베", "엘리베이터", "승강기"):
+        facility_types.append(FacilityType.ELEVATOR)
+    if ACCESSIBLE_RESTROOM_PATTERN.search(question):
+        facility_types.append(FacilityType.ACCESSIBLE_RESTROOM)
+    return facility_types
+
+
+def _parse_facility_question_kind(question: str) -> FacilityQuestionKind:
+    if _contains_any(
+        question,
+        "고장",
+        "운행",
+        "가동",
+        "점검",
+        "보수",
+        "사용 가능",
+        "이용 가능",
+        "상태",
+    ):
+        return FacilityQuestionKind.STATUS
+    if _contains_any(question, "어디", "위치", "출구", "몇 번", "어느 쪽"):
+        return FacilityQuestionKind.LOCATION
+    if _contains_any(question, "있어", "있나", "있는지", "설치"):
+        return FacilityQuestionKind.EXISTENCE
+    return FacilityQuestionKind.OVERVIEW
+
+
+def _facility_target(
+    intent: QuestionIntent,
+    mentions: list[RouteMention],
+    alternative_request_kind: AlternativeRequestKind | None,
+) -> tuple[str | None, str | None]:
+    supports_station_target = intent == "facility_status" or (
+        intent == "alternative_request"
+        and alternative_request_kind == AlternativeRequestKind.STATION_FACILITY
+    )
+    if not supports_station_target or len(mentions) != 1 or mentions[0].query is None:
+        return None, None
+    query = mentions[0].query
+    line = _extract_line(query)
+    station = LINE_PATTERN.sub("", query).strip()
+    return station or None, line
+
+
+def _has_generic_restroom_question(
+    question: str,
+    facility_types: list[FacilityType],
+) -> bool:
+    return "화장실" in question and FacilityType.ACCESSIBLE_RESTROOM not in facility_types
+
+
 def _detect_intent(question: str, mentions: list[RouteMention]) -> QuestionIntent:
+    if _contains_any(question, *ALTERNATIVE_TERMS):
+        return "alternative_request"
     if len(mentions) >= 2:
         return "trip_accessibility"
-    if _contains_any(question, "대안", "피해서", "다른 경로", "환승 적은"):
-        return "alternative_request"
     if _contains_any(question, "엘베", "엘리베이터", "승강기", "장애인화장실", "화장실", "고장"):
         return "facility_status"
     if _contains_any(question, "갈 수", "가도", "갈만", "가는 길", "까지"):
@@ -283,11 +389,30 @@ def _detect_intent(question: str, mentions: list[RouteMention]) -> QuestionInten
     return "unknown"
 
 
+def _parse_alternative_request_kind(
+    question: str,
+    mentions: list[RouteMention],
+    facility_types: list[FacilityType],
+) -> AlternativeRequestKind:
+    if "현재 경로" in question:
+        return AlternativeRequestKind.CURRENT_ROUTE
+    route_signal = _contains_any(question, "경로", "피해서", "환승")
+    station_facility_signal = bool(facility_types) or "화장실" in question
+    if len(mentions) == 1 and station_facility_signal and not route_signal:
+        return AlternativeRequestKind.STATION_FACILITY
+    return AlternativeRequestKind.ROUTE
+
+
 def _missing_fields(
     intent: QuestionIntent,
     origin: str | None,
     destination: str | None,
     has_mobility_signal: bool,
+    target_station: str | None,
+    facility_types: list[FacilityType],
+    alternative_request_kind: AlternativeRequestKind | None,
+    *,
+    generic_restroom: bool,
 ) -> list[str]:
     missing: list[str] = []
     if intent == "trip_accessibility":
@@ -297,8 +422,34 @@ def _missing_fields(
             missing.append("destination")
         if not has_mobility_signal:
             missing.append("mobility_profile")
-    elif intent in {"facility_status", "alternative_request"}:
-        missing.append("supported_intent")
+    elif intent == "facility_status":
+        if target_station is None:
+            missing.append("target_station")
+        if not facility_types:
+            missing.append(
+                "accessible_restroom_confirmation"
+                if generic_restroom
+                else "facility_type"
+            )
+    elif intent == "alternative_request":
+        if alternative_request_kind == AlternativeRequestKind.CURRENT_ROUTE:
+            missing.append("current_route_context")
+        elif alternative_request_kind == AlternativeRequestKind.STATION_FACILITY:
+            if target_station is None:
+                missing.append("target_station")
+            if not facility_types:
+                missing.append(
+                    "accessible_restroom_confirmation"
+                    if generic_restroom
+                    else "facility_type"
+                )
+        else:
+            if origin is None:
+                missing.append("origin")
+            if destination is None:
+                missing.append("destination")
+            if not has_mobility_signal:
+                missing.append("mobility_profile")
     else:
         missing.extend(["origin", "destination", "mobility_profile"])
     return _dedupe(missing)

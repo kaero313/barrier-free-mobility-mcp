@@ -89,6 +89,7 @@ def test_usability_fixture_is_valid_and_covers_required_scenarios() -> None:
 
     names = {case["name"] for case in fixture["cases"]}
     assert "wheelchair_direct_route_review" in names
+    assert "wheelchair_transfer_route_review" in names
     assert "station_elevator_alternative_review" in names
     assert "ambiguous_place_review" in names
     assert "partial_elevator_source_failure_review" in names
@@ -207,7 +208,8 @@ async def test_mock_review_case_runs_without_live_api() -> None:
 
     assert len(entries) == 1
     assert entries[0].status == "SUCCESS"
-    assert "출발 전에 엘리베이터 연결 동선을 확인해 주세요" in entries[0].user_message
+    assert entries[0].user_message.startswith("**출발 전에 확인이 필요합니다.**")
+    assert "**지금 할 일:**" in entries[0].user_message
     assert len(entries[0].response_sha256) == 64
 
 

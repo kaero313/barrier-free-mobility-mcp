@@ -5,10 +5,10 @@ from app.schemas.accessibility import MobilityProfile
 from app.schemas.common import CacheStatus, DataSourceMeta
 from app.schemas.facility import AccessibleFacility, FacilityStatus, FacilityType
 from app.schemas.route import RouteCandidate
-from app.services.accessibility_service import (
-    _compact_accessible_facilities,
-    _compact_route_candidates,
-    _dedupe_data_sources,
+from app.services.result_metadata import dedupe_data_sources
+from app.services.trip_response import (
+    compact_accessible_facilities,
+    compact_route_candidates,
 )
 
 
@@ -27,7 +27,7 @@ def test_dedupe_data_sources_by_source_cache_status_and_success() -> None:
         cache_status=CacheStatus.HIT,
     )
 
-    compacted = _dedupe_data_sources([first, duplicate, cache_hit])
+    compacted = dedupe_data_sources([first, duplicate, cache_hit])
 
     assert compacted == [first, cache_hit]
 
@@ -49,7 +49,7 @@ def test_compact_accessible_facilities_keeps_representative_elevator_per_station
         _facility("C-1", "C", FacilityType.ELEVATOR),
     ]
 
-    compacted, trimmed = _compact_accessible_facilities(
+    compacted, trimmed = compact_accessible_facilities(
         facilities,
         route,
         MobilityProfile(wheelchair=True),
@@ -77,7 +77,7 @@ def test_compact_accessible_facilities_adds_restrooms_when_required() -> None:
         _facility("B-R", "B", FacilityType.ACCESSIBLE_RESTROOM),
     ]
 
-    compacted, trimmed = _compact_accessible_facilities(
+    compacted, trimmed = compact_accessible_facilities(
         facilities,
         route,
         MobilityProfile(wheelchair=True, need_accessible_restroom=True),
@@ -96,7 +96,7 @@ def test_compact_route_candidates_keeps_selected_and_two_alternatives() -> None:
     selected = _route("selected")
     routes = [selected, _route("alt-1"), _route("alt-2"), _route("alt-3")]
 
-    compacted = _compact_route_candidates(routes, selected)
+    compacted = compact_route_candidates(routes, selected)
 
     assert [route.route_id for route in compacted] == ["selected", "alt-1", "alt-2"]
 

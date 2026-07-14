@@ -21,7 +21,8 @@ cases:
     source_case: hongdae_to_samsung_wheelchair
     persona: "계단과 에스컬레이터를 이용할 수 없는 휠체어 이용자"
     review_focus:
-      - "역별 엘리베이터 근거가 먼저 보이는가"
+      - "첫 세 줄만 읽어도 현재 판단과 가장 먼저 할 일을 알 수 있는가"
+      - "역별 표가 상단 요약을 불필요하게 반복하지 않는가"
       - "미확인 동선을 가능하다고 단정하지 않는가"
     modes: [mock, live]
     basic: true
@@ -44,6 +45,16 @@ cases:
       - "엘리베이터 동선 미확인 범위가 이해되는가"
     modes: [mock, live]
     basic: true
+
+  - name: wheelchair_transfer_route_review
+    question: "휠체어로 2호선 강남역에서 3호선 고속터미널역까지 계단 없이 갈 수 있어?"
+    category: trip_accessibility
+    persona: "계단을 이용할 수 없고 환승 동선의 엘리베이터 연결이 필요한 휠체어 이용자"
+    review_focus:
+      - "교대역 환승 동선의 확인 여부가 구체적으로 표시되는가"
+      - "출발역·환승역·도착역의 확인 근거가 구분되는가"
+    modes: [live]
+    basic: false
 
   - name: destination_restroom_review
     source_case: hongdae_to_samsung_restroom_destination

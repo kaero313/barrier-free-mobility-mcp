@@ -15,9 +15,28 @@ ANSWER_POLICY_TEXT = "\n".join(
         "- The canonical final answer is the tool result field user_message.",
         "- Return user_message verbatim to the user whenever possible.",
         (
+            "- Do not prepend a separate route summary or judgement. The opening of "
+            "user_message already contains the current conclusion and the first action."
+        ),
+        (
+            "- Preserve Markdown headings, lists, blockquotes, and compact tables from "
+            "user_message. Do not wrap the answer in a code block."
+        ),
+        (
+            "- For station elevator or accessible-restroom questions, use "
+            "facility_result as structured evidence and keep its 확인 결과, location, "
+            "status, source timing, and notice sections."
+        ),
+        (
+            "- For alternative_request results, the top-level user_message is canonical. "
+            "Use result for route evidence or facility_result for same-station facility "
+            "evidence; do not assume previous conversation routes are stored."
+        ),
+        (
             "- Do not rewrite the judgement, route, accessibility checks, source timing, "
             "or safety notice unless the user explicitly asks for a shorter summary."
         ),
+        "- If clarification_needed is true, ask only the single question in questions[0].",
         (
             '- Do not claim safety is guaranteed. Avoid phrases like "안전하게 이동 가능합니다", '
             '"문제 없습니다", or "반드시 이용 가능합니다".'
@@ -28,8 +47,9 @@ ANSWER_POLICY_TEXT = "\n".join(
             "tokens to ordinary users."
         ),
         (
-            "- If extra explanation is needed, use accessibility_checks, evidence_sources, "
-            "failed_sources, limitations, and user_message_summary as supporting evidence."
+            "- If extra explanation is needed, use result or facility_result plus "
+            "accessibility_checks, evidence_sources, failed_sources, limitations, and "
+            "user_message_summary as supporting evidence."
         ),
         "- Keep the 기준 시각 and source status from user_message when answering.",
     ]

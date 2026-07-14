@@ -54,7 +54,7 @@ trip_cases:
       need_elevator_only: true
       max_transfer_count: 1
     expected_status: "SUCCESS"
-    expected_risk_level: "LOW"
+    expected_risk_level: "CAUTION"
   - name: seoul_to_cityhall_line1
     origin: "1호선 서울역"
     destination: "1호선 시청"
@@ -65,7 +65,7 @@ trip_cases:
       need_elevator_only: true
       max_transfer_count: 1
     expected_status: "SUCCESS"
-    expected_risk_level: "LOW"
+    expected_risk_level: "CAUTION"
   - name: express_terminal_to_yeouido_line9
     origin: "9호선 고속터미널"
     destination: "9호선 여의도"
@@ -76,7 +76,7 @@ trip_cases:
       need_elevator_only: true
       max_transfer_count: 1
     expected_status: "SUCCESS"
-    expected_risk_level: "LOW"
+    expected_risk_level: "CAUTION"
   - name: sadang_to_ddp_maintenance
     origin: "4호선 사당"
     destination: "4호선 동대문역사문화공원"

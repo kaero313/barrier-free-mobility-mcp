@@ -48,16 +48,15 @@ async def test_mock_mode_trip_coverage_cases(case: dict[str, Any]) -> None:
     reason_codes = {reason.code for reason in result.risk_reasons}
     for expected_code in case.get("expected_risk_reason_codes", []):
         assert expected_code in reason_codes
-    if result.user_message.startswith("판단: 주의 필요"):
-        assert result.risk_level != "LOW"
-        assert result.risk_score >= 35
     if result.user_message_summary.judgement == "주의 필요":
         assert result.risk_level in {"CAUTION", "HIGH", "UNKNOWN"}
+        assert result.risk_score >= 35 or result.risk_level == "UNKNOWN"
     if profile.need_accessible_restroom and any(
         check.restroom_available is False for check in result.accessibility_checks
     ):
-        assert "판단: 주의 필요" in result.user_message
-        assert "장애인화장실 미확인 역" in result.user_message
+        assert "필수 장애인화장실 정보가 확인되지 않아" in result.user_message
+        assert "**지금 할 일:**" in result.user_message
+        assert "장애인화장실 미확인(필수)" in result.user_message
 
 
 @pytest.mark.parametrize(

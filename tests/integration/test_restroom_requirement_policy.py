@@ -50,7 +50,10 @@ async def test_destination_requirement_marks_destination_as_required() -> None:
 
     assert checks["origin"].restroom_required is False
     assert checks["destination"].restroom_required is True
-    assert "장애인화장실: 도착역 확인 조건을 반영했습니다" in result.user_message
+    assert "도착역:" in result.user_message
+    assert "삼성역" in result.user_message
+    assert "장애인화장실 확인(필수)" in result.user_message
+    assert "사용자 조건 반영" not in result.user_message
 
 
 async def test_destination_requirement_missing_restroom_applies_caution() -> None:

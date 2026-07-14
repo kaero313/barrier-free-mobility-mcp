@@ -1,6 +1,11 @@
 from __future__ import annotations
 
-from app.schemas.accessibility import AccessibleRestroomRequirement
+from app.schemas.accessibility import (
+    AccessibleRestroomRequirement,
+    AlternativeRequestKind,
+    FacilityQuestionKind,
+)
+from app.schemas.facility import FacilityType
 from app.services.question_parser import parse_accessibility_question
 
 
@@ -40,9 +45,19 @@ def test_parser_preserves_line_aware_station_mentions() -> None:
     assert parsed.parsed.station_mentions == ["9호선 고속터미널", "9호선 여의도"]
 
 
+def test_parser_preserves_wrong_explicit_line_for_service_validation() -> None:
+    parsed = parse_accessibility_question(
+        "휠체어로 9호선 삼성역에서 2호선 강남역까지 갈 수 있어?"
+    )
+
+    assert parsed.intent == "trip_accessibility"
+    assert parsed.parsed.origin == "9호선 삼성"
+    assert parsed.parsed.destination == "2호선 강남"
+
+
 def test_parser_extracts_accessible_restroom_requirement_scope() -> None:
     destination = parse_accessibility_question(
-        "휠체어로 홍대입구에서 삼성 가는데 도착역 장애인화장실이 필요해."
+        "휠체어로 홍대입구에서 삼성 가는데 도착역 장애인 화장실이 필요해."
     )
     origin = parse_accessibility_question(
         "휠체어로 홍대입구에서 출발역 장애인화장실을 확인하고 삼성까지 가고 싶어."
@@ -78,12 +93,112 @@ def test_parser_marks_place_name_without_station_as_missing_route_fields() -> No
     assert "destination" in parsed.parsed.missing_fields
 
 
-def test_parser_classifies_facility_question_as_unsupported_intent() -> None:
+def test_parser_extracts_elevator_status_question() -> None:
     parsed = parse_accessibility_question("강남역 엘베 고장났어?")
 
     assert parsed.intent == "facility_status"
     assert parsed.parsed.station_mentions == ["강남"]
-    assert "supported_intent" in parsed.parsed.missing_fields
+    assert parsed.parsed.target_station == "강남"
+    assert parsed.parsed.target_line is None
+    assert parsed.parsed.facility_types == [FacilityType.ELEVATOR]
+    assert parsed.parsed.facility_question_kind == FacilityQuestionKind.STATUS
+    assert parsed.parsed.missing_fields == []
+
+
+def test_parser_extracts_line_aware_elevator_location_question() -> None:
+    parsed = parse_accessibility_question("2호선 삼성역 엘리베이터 어디 있어?")
+
+    assert parsed.intent == "facility_status"
+    assert parsed.parsed.target_station == "삼성"
+    assert parsed.parsed.target_line == "2"
+    assert parsed.parsed.facility_types == [FacilityType.ELEVATOR]
+    assert parsed.parsed.facility_question_kind == FacilityQuestionKind.LOCATION
+
+
+def test_parser_extracts_accessible_restroom_existence_question() -> None:
+    parsed = parse_accessibility_question("2호선 잠실역 장애인 화장실 있어?")
+
+    assert parsed.intent == "facility_status"
+    assert parsed.parsed.target_station == "잠실"
+    assert parsed.parsed.target_line == "2"
+    assert parsed.parsed.facility_types == [FacilityType.ACCESSIBLE_RESTROOM]
+    assert parsed.parsed.facility_question_kind == FacilityQuestionKind.EXISTENCE
+
+
+def test_parser_requires_confirmation_for_generic_restroom_question() -> None:
+    parsed = parse_accessibility_question("2호선 잠실역 화장실 어디 있어?")
+
+    assert parsed.intent == "facility_status"
+    assert parsed.parsed.facility_types == []
+    assert "accessible_restroom_confirmation" in parsed.parsed.missing_fields
+
+
+def test_parser_supports_elevator_and_accessible_restroom_together() -> None:
+    parsed = parse_accessibility_question(
+        "2호선 삼성역 엘리베이터와 장애인화장실 위치 알려줘."
+    )
+
+    assert parsed.parsed.facility_types == [
+        FacilityType.ELEVATOR,
+        FacilityType.ACCESSIBLE_RESTROOM,
+    ]
+    assert parsed.parsed.facility_question_kind == FacilityQuestionKind.LOCATION
+
+
+def test_parser_classifies_station_facility_alternative() -> None:
+    parsed = parse_accessibility_question("강남역 엘베 고장났는데 대안 있어?")
+
+    assert parsed.intent == "alternative_request"
+    assert (
+        parsed.parsed.alternative_request_kind
+        == AlternativeRequestKind.STATION_FACILITY
+    )
+    assert parsed.parsed.target_station == "강남"
+    assert parsed.parsed.facility_types == [FacilityType.ELEVATOR]
+    assert parsed.parsed.facility_question_kind == FacilityQuestionKind.STATUS
+    assert parsed.parsed.missing_fields == []
+
+
+def test_parser_prioritizes_route_alternative_over_trip_intent() -> None:
+    parsed = parse_accessibility_question(
+        "휠체어로 홍대입구에서 삼성까지 환승 적은 대안 경로 알려줘."
+    )
+
+    assert parsed.intent == "alternative_request"
+    assert parsed.parsed.alternative_request_kind == AlternativeRequestKind.ROUTE
+    assert parsed.parsed.origin == "홍대입구"
+    assert parsed.parsed.destination == "삼성"
+    assert parsed.parsed.mobility_profile.wheelchair is True
+    assert parsed.parsed.mobility_profile.max_transfer_count == 1
+    assert parsed.parsed.missing_fields == []
+
+
+def test_parser_infers_elevator_requirement_for_avoidance_route() -> None:
+    parsed = parse_accessibility_question(
+        "홍대입구에서 삼성까지 엘리베이터 고장난 역 피해서 갈 수 있어?"
+    )
+
+    assert parsed.parsed.alternative_request_kind == AlternativeRequestKind.ROUTE
+    assert parsed.parsed.mobility_profile.need_elevator_only is True
+    assert parsed.parsed.mobility_profile.can_use_stairs is False
+    assert parsed.parsed.mobility_profile.can_use_escalator is False
+    assert "mobility_profile" not in parsed.parsed.missing_fields
+
+
+def test_parser_marks_current_route_alternative_as_context_dependent() -> None:
+    parsed = parse_accessibility_question("현재 경로에서 승강기 문제 있는 역 있어?")
+
+    assert parsed.intent == "alternative_request"
+    assert parsed.parsed.alternative_request_kind == AlternativeRequestKind.CURRENT_ROUTE
+    assert "current_route_context" in parsed.parsed.missing_fields
+
+
+def test_parser_requires_route_details_for_unbound_alternative() -> None:
+    parsed = parse_accessibility_question("엘리베이터 고장난 역 피해서 갈 수 있어?")
+
+    assert parsed.parsed.alternative_request_kind == AlternativeRequestKind.ROUTE
+    assert "origin" in parsed.parsed.missing_fields
+    assert "destination" in parsed.parsed.missing_fields
 
 
 def test_parser_uses_station_mention_before_same_range_place_alias() -> None:

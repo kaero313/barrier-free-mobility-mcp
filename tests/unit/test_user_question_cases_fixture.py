@@ -5,19 +5,16 @@ from typing import Any
 
 import yaml
 
-from app.schemas.accessibility import MobilityProfile
+from app.schemas.accessibility import FacilityAnswerState, MobilityProfile
 from app.schemas.common import ResponseStatus
+from app.schemas.facility import FacilityType
 
 USER_QUESTION_CASES = (
     Path(__file__).resolve().parents[1] / "fixtures" / "user_question_cases.yaml"
 )
 
 EXPECTED_SECTIONS = [
-    "판단:",
-    "이유",
-    "추천 경로",
-    "접근성 체크",
-    "사용자 조건 반영",
+    "확인 결과",
     "기준 시각",
     "주의사항",
 ]
@@ -35,7 +32,11 @@ VALID_CATEGORIES = {
     "facility_status",
     "alternative_request",
 }
-VALID_EXECUTION_KINDS = {"trip_brief", "future_natural_language"}
+VALID_EXECUTION_KINDS = {
+    "trip_brief",
+    "natural_language_question",
+    "future_natural_language",
+}
 VALID_RISK_LEVELS = {"LOW", "CAUTION", "HIGH", "UNKNOWN"}
 VALID_JUDGEMENTS = {"가능", "주의 필요", "권장하지 않음", "확인 불가", "추가 정보 필요"}
 
@@ -76,6 +77,8 @@ def test_user_question_cases_have_expected_schema() -> None:
 
         if case["execution"]["kind"] == "trip_brief":
             _assert_trip_brief_case(case)
+        elif case["execution"]["kind"] == "natural_language_question":
+            _assert_natural_language_question_case(case)
         else:
             _assert_future_natural_language_case(case)
 
@@ -104,3 +107,18 @@ def _assert_future_natural_language_case(case: dict[str, Any]) -> None:
     assert expectations["future_reason"]
     assert expectations["expected_behavior"]
     assert expectations["contains"]
+
+
+def _assert_natural_language_question_case(case: dict[str, Any]) -> None:
+    expectations = case["expectations"]
+
+    ResponseStatus(expectations["status"])
+    assert isinstance(expectations["clarification_needed"], bool)
+    assert expectations["contains"]
+    assert isinstance(expectations["not_contains"], list)
+    if expectations.get("facility_type"):
+        FacilityType(expectations["facility_type"])
+    if expectations.get("answer_state"):
+        FacilityAnswerState(expectations["answer_state"])
+    if expectations.get("result_kind"):
+        assert expectations["result_kind"] in {"trip", "facility"}
