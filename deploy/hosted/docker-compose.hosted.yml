@@ -13,9 +13,16 @@ services:
       MCP_HOST: 0.0.0.0
       MCP_PORT: 8000
       MCP_PATH: ${MCP_PATH:-/mcp}
+      MCP_AUTH_MODE: ${MCP_AUTH_MODE:-static}
       MCP_AUTH_ENABLED: ${MCP_AUTH_ENABLED:-true}
-      MCP_API_KEY: ${MCP_API_KEY:-<long-random-token>}
+      MCP_API_KEY: ${MCP_API_KEY:?MCP_API_KEY must be set}
       MCP_PUBLIC_BASE_URL: ${MCP_PUBLIC_BASE_URL:-https://mcp.example.com}
+      MCP_OIDC_ISSUER_URL: ${MCP_OIDC_ISSUER_URL:-}
+      MCP_OIDC_JWKS_URL: ${MCP_OIDC_JWKS_URL:-}
+      MCP_OIDC_AUDIENCE: ${MCP_OIDC_AUDIENCE:-}
+      MCP_OIDC_ALGORITHM: ${MCP_OIDC_ALGORITHM:-RS256}
+      MCP_OIDC_REQUIRED_SCOPES: ${MCP_OIDC_REQUIRED_SCOPES:-mcp:read}
+      MCP_OIDC_JWKS_SSRF_SAFE: ${MCP_OIDC_JWKS_SSRF_SAFE:-true}
       MCP_REQUEST_BODY_LIMIT_ENABLED: ${MCP_REQUEST_BODY_LIMIT_ENABLED:-true}
       MCP_MAX_REQUEST_BODY_BYTES: ${MCP_MAX_REQUEST_BODY_BYTES:-1048576}
       MCP_TOOL_INPUT_MAX_CHARS: ${MCP_TOOL_INPUT_MAX_CHARS:-120}
@@ -37,7 +44,7 @@ services:
       HTTP_TIMEOUT_SECONDS: ${HTTP_TIMEOUT_SECONDS:-10}
       HTTP_MAX_RETRIES: ${HTTP_MAX_RETRIES:-2}
       HTTP_RETRY_BACKOFF_SECONDS: ${HTTP_RETRY_BACKOFF_SECONDS:-0.5}
-      CACHE_BACKEND: ${CACHE_BACKEND:-redis}
+      CACHE_BACKEND: ${CACHE_BACKEND:-memory}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
       CACHE_STALE_TTL_SECONDS: ${CACHE_STALE_TTL_SECONDS:-86400}
       REDIS_SOCKET_TIMEOUT_SECONDS: ${REDIS_SOCKET_TIMEOUT_SECONDS:-2.0}
@@ -50,9 +57,6 @@ services:
       LOG_FORMAT: ${LOG_FORMAT:-json}
     expose:
       - "8000"
-    depends_on:
-      redis:
-        condition: service_started
     healthcheck:
       test:
         [
@@ -70,6 +74,7 @@ services:
 
   redis:
     image: redis:7-alpine
+    profiles: ["redis"]
     restart: unless-stopped
     command: ["redis-server", "--appendonly", "yes"]
     volumes:

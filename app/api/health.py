@@ -2,15 +2,19 @@ from __future__ import annotations
 
 from typing import Any
 
+from app.cache.base import CacheProtocol
 from app.cache.factory import redis_cache_available
 from app.core.config import AppMode, CacheBackend, Settings, get_settings
 from app.core.time import utc_now
 
 
-async def health(settings: Settings | None = None) -> dict[str, Any]:
+async def health(
+    settings: Settings | None = None,
+    cache: CacheProtocol | None = None,
+) -> dict[str, Any]:
     settings = settings or get_settings()
     public_apis = _public_api_status(settings)
-    cache_status = await _cache_status(settings)
+    cache_status = await _cache_status(settings, cache)
     warnings = _warnings(settings, public_apis, cache_status)
     return {
         "status": "degraded" if warnings else "ok",
@@ -23,7 +27,8 @@ async def health(settings: Settings | None = None) -> dict[str, Any]:
             "server_name": settings.mcp_server_name,
             "transport": settings.mcp_transport,
             "path": settings.mcp_path,
-            "auth_enabled": settings.mcp_auth_enabled,
+            "auth_enabled": settings.is_mcp_auth_enabled,
+            "auth_mode": settings.effective_mcp_auth_mode,
             "public_base_url_configured": bool(settings.mcp_public_base_url.strip()),
             "request_body_limit_enabled": settings.mcp_request_body_limit_enabled,
             "max_request_body_bytes": settings.mcp_max_request_body_bytes,
@@ -90,11 +95,17 @@ def _source_status(status: dict[str, bool], *, required: bool) -> str:
     return "missing_config"
 
 
-async def _cache_status(settings: Settings) -> str:
+async def _cache_status(
+    settings: Settings,
+    cache: CacheProtocol | None,
+) -> str:
     if settings.cache_backend == CacheBackend.MEMORY:
         return "ok"
     if settings.cache_backend == CacheBackend.REDIS:
-        return "ok" if await redis_cache_available(settings) else "unavailable"
+        available = await (
+            cache.ping() if cache is not None else redis_cache_available(settings)
+        )
+        return "ok" if available else "unavailable"
     return "unknown"
 
 

@@ -10,7 +10,11 @@ from app.mcp.server import create_mcp_server
 
 def main() -> None:
     settings = get_settings()
-    configure_logging(settings.log_level, settings.log_format)
+    configure_logging(
+        settings.log_level,
+        settings.log_format,
+        sensitive_values=settings.logging_sensitive_values,
+    )
     mcp = create_mcp_server(settings)
 
     run_kwargs = {

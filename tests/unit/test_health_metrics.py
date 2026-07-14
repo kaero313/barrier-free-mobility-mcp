@@ -6,12 +6,14 @@ import httpx
 
 from app.api.health import health
 from app.api.metrics import metrics
-from app.core.config import AppMode, CacheBackend, Settings
+from app.core.config import AppMode, CacheBackend, McpAuthMode, Settings
 from app.core.metrics import metrics_registry
 from app.mcp import tools
 from app.mcp.server import create_mcp_server
 from app.schemas.accessibility import MobilityProfile
 from app.schemas.common import CacheStatus
+
+VALID_STATIC_TOKEN = "valid-test-token-with-at-least-32-characters"
 
 
 async def test_health_reports_mock_mode_without_secrets() -> None:
@@ -27,6 +29,7 @@ async def test_health_reports_mock_mode_without_secrets() -> None:
     assert payload["status"] == "ok"
     assert payload["app"]["mode"] == AppMode.MOCK
     assert payload["mcp"]["auth_enabled"] is False
+    assert payload["mcp"]["auth_mode"] == McpAuthMode.NONE
     assert payload["mcp"]["request_body_limit_enabled"] is True
     assert payload["mcp"]["max_request_body_bytes"] > 0
     assert payload["mcp"]["tool_input_max_chars"] > 0
@@ -154,8 +157,8 @@ async def test_health_and_metrics_http_routes() -> None:
 async def test_metrics_http_route_requires_bearer_when_mcp_auth_is_enabled() -> None:
     settings = Settings(
         _env_file=None,
-        mcp_auth_enabled=True,
-        mcp_api_key="valid-test-token",
+        mcp_auth_mode=McpAuthMode.STATIC,
+        mcp_api_key=VALID_STATIC_TOKEN,
     )
     server = create_mcp_server(settings)
     app = server.http_app(path=settings.mcp_path)
@@ -169,10 +172,28 @@ async def test_metrics_http_route_requires_bearer_when_mcp_auth_is_enabled() -> 
         )
         authorized = await client.get(
             "/metrics",
-            headers={"Authorization": "Bearer valid-test-token"},
+            headers={"Authorization": f"Bearer {VALID_STATIC_TOKEN}"},
         )
 
     assert unauthorized.status_code == 401
     assert wrong_token.status_code == 401
     assert authorized.status_code == 200
-    assert "valid-test-token" not in authorized.text
+    assert VALID_STATIC_TOKEN not in authorized.text
+
+
+async def test_health_reports_effective_oidc_mode_without_auth_configuration_details() -> None:
+    settings = Settings(
+        _env_file=None,
+        mcp_auth_mode=McpAuthMode.OIDC,
+        mcp_public_base_url="https://mcp.example.com",
+        mcp_oidc_issuer_url="https://issuer.example",
+        mcp_oidc_jwks_url="https://issuer.example/.well-known/jwks.json",
+        mcp_oidc_audience="barrier-free-mcp",
+    )
+
+    payload = await health(settings)
+
+    assert payload["mcp"]["auth_enabled"] is True
+    assert payload["mcp"]["auth_mode"] == McpAuthMode.OIDC
+    assert "issuer.example" not in str(payload)
+    assert "barrier-free-mcp" not in str(payload)
