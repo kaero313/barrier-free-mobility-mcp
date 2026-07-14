@@ -78,8 +78,9 @@ class Settings(BaseSettings):
 
     facility_station_param: str = "station"
     facility_line_param: str = "line"
-    route_origin_param: str = "origin"
-    route_destination_param: str = "destination"
+    route_origin_param: str = "dptreStn"
+    route_destination_param: str = "arvlStn"
+    route_station_value_type_param: str = "stationValueType"
     route_search_date_param: str = "searchDt"
     route_default_search_date: str = ""
     elevator_status_station_param: str = "station"

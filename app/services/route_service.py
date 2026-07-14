@@ -25,15 +25,31 @@ class RouteService:
         self,
         origin: str,
         destination: str,
+        *,
+        origin_station_code: str | None = None,
+        destination_station_code: str | None = None,
     ) -> ServiceResult[list[RouteCandidate]]:
         client = client_factory.route_client(self.settings)
+        request_params = build_route_request_params(
+            origin,
+            destination,
+            self.settings,
+            origin_station_code=origin_station_code,
+            destination_station_code=destination_station_code,
+        )
         return await fetch_normalized_with_cache(
             settings=self.settings,
             cache=self.cache,
-            cache_key=route_cache_key(origin, destination, self.settings),
+            cache_key=route_cache_key(
+                origin,
+                destination,
+                self.settings,
+                origin_station_code=origin_station_code,
+                destination_station_code=destination_station_code,
+            ),
             ttl_seconds=self.settings.route_ttl_seconds,
             source_name="shortest_route",
-            fetch=lambda: client.fetch(origin=origin, destination=destination),
+            fetch=lambda: client.fetch(**request_params),
             normalize=lambda raw: normalize_route_candidates(
                 raw,
                 origin=origin,
@@ -48,9 +64,43 @@ def route_cache_key(
     destination: str,
     settings: Settings,
     *,
+    origin_station_code: str | None = None,
+    destination_station_code: str | None = None,
     now: datetime | None = None,
 ) -> str:
-    return f"route:{origin}:{destination}:{route_search_cache_scope(settings, now=now)}"
+    request_params = build_route_request_params(
+        origin,
+        destination,
+        settings,
+        origin_station_code=origin_station_code,
+        destination_station_code=destination_station_code,
+    )
+    value_type = request_params.get("station_value_type", "name")
+    return (
+        f"route:{value_type}:{request_params['origin']}:"
+        f"{request_params['destination']}:{route_search_cache_scope(settings, now=now)}"
+    )
+
+
+def build_route_request_params(
+    origin: str,
+    destination: str,
+    settings: Settings,
+    *,
+    origin_station_code: str | None = None,
+    destination_station_code: str | None = None,
+) -> dict[str, str]:
+    if (
+        settings.route_station_value_type_param
+        and origin_station_code
+        and destination_station_code
+    ):
+        return {
+            "origin": origin_station_code,
+            "destination": destination_station_code,
+            "station_value_type": "code",
+        }
+    return {"origin": origin, "destination": destination}
 
 
 def route_search_cache_scope(settings: Settings, *, now: datetime | None = None) -> str:

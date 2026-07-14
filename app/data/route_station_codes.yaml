@@ -1,0 +1,37 @@
+version: 1
+source_name: "서울교통공사_최단경로이동정보"
+verified_at: "2026-07-14"
+
+# Codes returned and accepted by 서울교통공사_최단경로이동정보.
+# These are intentionally separate from station_aliases.yaml station_id values.
+stations:
+  - {station_name: "서울역", line: "1", route_station_code: "0150"}
+  - {station_name: "서울역", line: "4", route_station_code: "0426"}
+  - {station_name: "시청", line: "1", route_station_code: "0151"}
+  - {station_name: "시청", line: "2", route_station_code: "0201"}
+  - {station_name: "홍대입구", line: "2", route_station_code: "0239"}
+  - {station_name: "강남", line: "2", route_station_code: "0222"}
+  - {station_name: "삼성", line: "2", route_station_code: "0219"}
+  - {station_name: "교대", line: "2", route_station_code: "0223"}
+  - {station_name: "교대", line: "3", route_station_code: "0330"}
+  - {station_name: "고속터미널", line: "3", route_station_code: "0339"}
+  - {station_name: "고속터미널", line: "7", route_station_code: "2736"}
+  - {station_name: "고속터미널", line: "9", route_station_code: "4123"}
+  - {station_name: "사당", line: "2", route_station_code: "0226"}
+  - {station_name: "사당", line: "4", route_station_code: "0433"}
+  - {station_name: "동대문역사문화공원", line: "2", route_station_code: "0205"}
+  - {station_name: "동대문역사문화공원", line: "4", route_station_code: "0422"}
+  - {station_name: "동대문역사문화공원", line: "5", route_station_code: "2537"}
+  - {station_name: "왕십리", line: "2", route_station_code: "0208"}
+  - {station_name: "왕십리", line: "5", route_station_code: "2541"}
+  - {station_name: "여의도", line: "5", route_station_code: "2527"}
+  - {station_name: "여의도", line: "9", route_station_code: "4115"}
+  - {station_name: "합정", line: "2", route_station_code: "0238"}
+  - {station_name: "합정", line: "6", route_station_code: "2623"}
+  - {station_name: "신도림", line: "1", route_station_code: "1007"}
+  - {station_name: "신도림", line: "2", route_station_code: "0234"}
+  - {station_name: "건대입구", line: "2", route_station_code: "0212"}
+  - {station_name: "건대입구", line: "7", route_station_code: "2729"}
+  - {station_name: "잠실", line: "2", route_station_code: "0216"}
+  - {station_name: "잠실", line: "8", route_station_code: "2815"}
+  - {station_name: "봉은사", line: "9", route_station_code: "4129"}

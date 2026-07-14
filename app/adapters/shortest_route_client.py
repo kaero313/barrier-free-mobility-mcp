@@ -30,6 +30,7 @@ class ShortestRouteClient(HttpPublicApiClient):
             param_aliases={
                 "origin": settings.route_origin_param,
                 "destination": settings.route_destination_param,
+                "station_value_type": settings.route_station_value_type_param,
             },
             default_params=default_params,
         )

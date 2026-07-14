@@ -29,7 +29,11 @@ async def main() -> None:
     from app.core.errors import PublicApiError
     from app.normalizers.route_normalizer import normalize_route_candidates
     from app.normalizers.station_normalizer import resolve_station
-    from app.services.route_service import route_search_cache_scope
+    from app.services.route_service import (
+        build_route_request_params,
+        route_search_cache_scope,
+    )
+    from app.services.route_station_codes import resolve_route_station_code
 
     parser = argparse.ArgumentParser(description="Check live shortest-route API accuracy.")
     parser.add_argument("--case-set", choices=["basic", "coverage"], default="basic")
@@ -72,8 +76,31 @@ async def main() -> None:
 
     for case in cases:
         checked_at = datetime.now().isoformat(timespec="seconds")
+        origin_resolution = resolve_station(_station_query(case, "origin"))
+        destination_resolution = resolve_station(_station_query(case, "destination"))
+        request_params = build_route_request_params(
+            case["origin"],
+            case["destination"],
+            settings,
+            origin_station_code=(
+                resolve_route_station_code(
+                    origin_resolution.matched_station.station_name,
+                    origin_resolution.matched_station.line,
+                )
+                if origin_resolution.matched_station
+                else None
+            ),
+            destination_station_code=(
+                resolve_route_station_code(
+                    destination_resolution.matched_station.station_name,
+                    destination_resolution.matched_station.line,
+                )
+                if destination_resolution.matched_station
+                else None
+            ),
+        )
         try:
-            raw = await client.fetch(origin=case["origin"], destination=case["destination"])
+            raw = await client.fetch(**request_params)
             routes = normalize_route_candidates(
                 raw,
                 origin=case["origin"],
@@ -86,11 +113,10 @@ async def main() -> None:
                     raw=raw,
                     checked_at=checked_at,
                     search_scope=route_search_cache_scope(settings),
+                    request_value_type=request_params.get("station_value_type", "name"),
                     station_resolution={
-                        "origin": summarize_station_resolution(resolve_station(case["origin"])),
-                        "destination": summarize_station_resolution(
-                            resolve_station(case["destination"])
-                        ),
+                        "origin": summarize_station_resolution(origin_resolution),
+                        "destination": summarize_station_resolution(destination_resolution),
                     },
                 )
             )
@@ -103,6 +129,9 @@ async def main() -> None:
                     "status": "ERROR",
                     "checked_at": checked_at,
                     "search_scope": route_search_cache_scope(settings),
+                    "request_value_type": request_params.get(
+                        "station_value_type", "name"
+                    ),
                     "error": redact_text(f"{exc.source_name}:{exc.reason}", secrets),
                 }
             )
@@ -125,6 +154,7 @@ def summarize_success(
     raw: dict[str, Any],
     checked_at: str,
     search_scope: str,
+    request_value_type: str,
     station_resolution: dict[str, Any],
 ) -> dict[str, Any]:
     if not routes:
@@ -135,6 +165,7 @@ def summarize_success(
             "status": "NO_ROUTE",
             "checked_at": checked_at,
             "search_scope": search_scope,
+            "request_value_type": request_value_type,
             "station_resolution": station_resolution,
             "payload_chars": len(json.dumps(raw, ensure_ascii=False)),
         }
@@ -154,6 +185,7 @@ def summarize_success(
         "status": "ISSUES" if issues else "OK",
         "checked_at": checked_at,
         "search_scope": search_scope,
+        "request_value_type": request_value_type,
         "station_resolution": station_resolution,
         "route": {
             "transfer_count": route.transfer_count,
@@ -177,6 +209,12 @@ def summarize_station_resolution(result: Any) -> dict[str, Any]:
         "needs_clarification": result.needs_clarification,
         "candidate_count": len(result.candidates),
     }
+
+
+def _station_query(case: dict[str, Any], role: str) -> str:
+    station = str(case[role])
+    line = case.get(f"{role}_line")
+    return f"{line}호선 {station}" if line else station
 
 
 def redact_text(value: str, secrets: set[str]) -> str:

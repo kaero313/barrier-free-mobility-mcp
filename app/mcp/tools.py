@@ -23,6 +23,8 @@ from app.services.lookup_result import (
     build_route_lookup_result,
 )
 from app.services.route_service import RouteService
+from app.services.route_station_codes import resolve_route_station_code
+from app.services.station_context import resolve_station_context
 from app.services.station_service import StationService
 
 _cache: CacheProtocol | None = None
@@ -204,9 +206,19 @@ async def get_route_candidates(origin: str, destination: str) -> RouteLookupResu
     _validate_text_inputs(origin=origin, destination=destination)
 
     async def operation() -> RouteLookupResult:
+        origin_context = resolve_station_context(_station_service, origin)
+        destination_context = resolve_station_context(_station_service, destination)
         service_result = await _get_route_service().get_route_candidates(
             origin,
             destination,
+            origin_station_code=resolve_route_station_code(
+                origin_context.station_name,
+                origin_context.line,
+            ),
+            destination_station_code=resolve_route_station_code(
+                destination_context.station_name,
+                destination_context.line,
+            ),
         )
         return build_route_lookup_result(
             origin=origin,

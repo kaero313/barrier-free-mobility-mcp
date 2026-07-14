@@ -24,10 +24,12 @@ from app.services.question_answering import (
 )
 from app.services.route_candidate_assessment import assess_route_candidate
 from app.services.route_service import RouteService
+from app.services.route_station_codes import resolve_route_station_code
 from app.services.station_context import (
     build_route_station_contexts,
     context_for_station,
     resolve_station_context,
+    route_line_mismatch_limitations,
 )
 from app.services.station_service import StationService
 from app.services.trip_response import (
@@ -82,14 +84,37 @@ class AccessibilityService:
         route_result = await self.route_service.get_route_candidates(
             normalized_origin,
             normalized_destination,
+            origin_station_code=resolve_route_station_code(
+                origin_context.station_name,
+                origin_context.line,
+            ),
+            destination_station_code=resolve_route_station_code(
+                destination_context.station_name,
+                destination_context.line,
+            ),
         )
         route_data_sources = list(route_result.data_sources)
         route_failed_sources = list(route_result.failed_sources)
         route_limitations = list(route_result.limitations)
 
-        route_candidates = [
+        usable_route_candidates = [
             route for route in route_result.value if is_usable_route_candidate(route)
         ]
+        route_candidates = [
+            route
+            for route in usable_route_candidates
+            if not route_line_mismatch_limitations(
+                [route],
+                origin_context,
+                destination_context,
+            )
+        ]
+        rejected_count = len(usable_route_candidates) - len(route_candidates)
+        if rejected_count:
+            route_limitations.append(
+                "입력한 역·호선과 일치하지 않은 경로 후보를 "
+                f"{rejected_count}개 제외했습니다."
+            )
         if not route_candidates:
             return build_no_route_result(
                 origin=normalized_origin,
