@@ -18,8 +18,21 @@ class StationLookupContext:
     station_name: str
     line: str | None = None
     station_id: str | None = None
+    operator: str | None = None
     query: str = ""
     needs_clarification: bool = False
+    candidate_lines: tuple[str, ...] = ()
+    clarification_message: str | None = None
+
+
+def context_for_station(
+    station: str,
+    station_contexts: dict[str, StationLookupContext],
+) -> StationLookupContext:
+    key = normalize_station_name(station)
+    if key and key in station_contexts:
+        return station_contexts[key]
+    return StationLookupContext(station_name=station)
 
 
 def resolve_station_context(
@@ -38,6 +51,7 @@ def resolve_station_context(
             station_name=matched.station_name,
             line=line or matched.line,
             station_id=matched.station_id,
+            operator=matched.operator,
             query=query,
             needs_clarification=False,
         )
@@ -49,6 +63,10 @@ def resolve_station_context(
         station_id=None,
         query=query,
         needs_clarification=resolution.needs_clarification,
+        candidate_lines=tuple(
+            sorted({candidate.line for candidate in resolution.candidates if candidate.line})
+        ),
+        clarification_message=resolution.clarification_message,
     )
 
 

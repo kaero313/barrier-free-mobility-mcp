@@ -3,6 +3,7 @@ from __future__ import annotations
 from enum import StrEnum
 from functools import lru_cache
 from typing import Self
+from urllib.parse import urlparse
 
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -18,6 +19,23 @@ class CacheBackend(StrEnum):
     REDIS = "redis"
 
 
+class McpAuthMode(StrEnum):
+    NONE = "none"
+    STATIC = "static"
+    OIDC = "oidc"
+
+
+MIN_STATIC_MCP_TOKEN_LENGTH = 32
+UNSAFE_MCP_API_KEYS = {
+    "",
+    "change-me",
+    "<long-random-token>",
+    "<replace-with-at-least-32-random-characters>",
+    "replace-me",
+    "replace-with-at-least-32-random-characters",
+}
+
+
 class Settings(BaseSettings):
     app_env: str = "local"
     app_mode: AppMode = AppMode.MOCK
@@ -27,9 +45,16 @@ class Settings(BaseSettings):
     mcp_host: str = "0.0.0.0"
     mcp_port: int = 8000
     mcp_path: str = "/mcp"
+    mcp_auth_mode: McpAuthMode | None = None
     mcp_auth_enabled: bool = False
     mcp_api_key: str = "change-me"
     mcp_public_base_url: str = ""
+    mcp_oidc_issuer_url: str = ""
+    mcp_oidc_jwks_url: str = ""
+    mcp_oidc_audience: str = ""
+    mcp_oidc_algorithm: str = "RS256"
+    mcp_oidc_required_scopes: str = "mcp:read"
+    mcp_oidc_jwks_ssrf_safe: bool = True
     mcp_request_body_limit_enabled: bool = True
     mcp_max_request_body_bytes: int = 1_048_576
     mcp_tool_input_max_chars: int = 120
@@ -104,12 +129,85 @@ class Settings(BaseSettings):
             return "http"
         return self.mcp_transport
 
+    @property
+    def effective_mcp_auth_mode(self) -> McpAuthMode:
+        if self.mcp_auth_mode is not None:
+            return self.mcp_auth_mode
+        if self.mcp_auth_enabled:
+            return McpAuthMode.STATIC
+        return McpAuthMode.NONE
+
+    @property
+    def is_mcp_auth_enabled(self) -> bool:
+        return self.effective_mcp_auth_mode != McpAuthMode.NONE
+
+    @property
+    def mcp_oidc_scope_list(self) -> list[str]:
+        raw_scopes = self.mcp_oidc_required_scopes.replace(",", " ")
+        return list(dict.fromkeys(scope for scope in raw_scopes.split() if scope))
+
+    @property
+    def logging_sensitive_values(self) -> tuple[str, ...]:
+        values = (
+            self.mcp_api_key,
+            self.public_data_service_key,
+            self.seoul_open_api_key,
+            self.elevator_status_api_key,
+            self.elevator_info_api_key,
+            self.restroom_api_key,
+            self.redis_url,
+        )
+        return tuple(dict.fromkeys(value.strip() for value in values if value.strip()))
+
     @model_validator(mode="after")
     def validate_mcp_security(self) -> Self:
-        if self.mcp_auth_enabled and self.mcp_api_key.strip() in {"", "change-me"}:
-            raise ValueError(
-                "MCP_AUTH_ENABLED=true requires MCP_API_KEY to be set to a non-default value."
-            )
+        auth_mode = self.effective_mcp_auth_mode
+        if auth_mode == McpAuthMode.STATIC:
+            static_key = self.mcp_api_key.strip()
+            if static_key in UNSAFE_MCP_API_KEYS:
+                raise ValueError(
+                    "MCP_AUTH_MODE=static requires MCP_API_KEY to be set to a non-default value."
+                )
+            if len(static_key) < MIN_STATIC_MCP_TOKEN_LENGTH:
+                raise ValueError(
+                    "MCP_AUTH_MODE=static requires MCP_API_KEY to contain at least "
+                    f"{MIN_STATIC_MCP_TOKEN_LENGTH} characters."
+                )
+        if auth_mode == McpAuthMode.OIDC:
+            required_values = {
+                "MCP_PUBLIC_BASE_URL": self.mcp_public_base_url,
+                "MCP_OIDC_ISSUER_URL": self.mcp_oidc_issuer_url,
+                "MCP_OIDC_JWKS_URL": self.mcp_oidc_jwks_url,
+                "MCP_OIDC_AUDIENCE": self.mcp_oidc_audience,
+            }
+            missing = [name for name, value in required_values.items() if not value.strip()]
+            if missing:
+                raise ValueError(
+                    "MCP_AUTH_MODE=oidc requires configuration for: "
+                    + ", ".join(sorted(missing))
+                )
+            for name in (
+                "mcp_public_base_url",
+                "mcp_oidc_issuer_url",
+                "mcp_oidc_jwks_url",
+            ):
+                _validate_auth_url(name, getattr(self, name))
+            if self.mcp_oidc_algorithm not in {
+                "RS256",
+                "RS384",
+                "RS512",
+                "ES256",
+                "ES384",
+                "ES512",
+                "PS256",
+                "PS384",
+                "PS512",
+            }:
+                raise ValueError(
+                    "MCP_OIDC_ALGORITHM must be an asymmetric RS*, ES*, or PS* algorithm."
+                )
+            if not self.mcp_oidc_scope_list:
+                raise ValueError("MCP_OIDC_REQUIRED_SCOPES must contain at least one scope.")
         if self.mcp_request_body_limit_enabled and self.mcp_max_request_body_bytes <= 0:
             raise ValueError("MCP_MAX_REQUEST_BODY_BYTES must be greater than 0.")
         if self.mcp_tool_input_max_chars <= 0:
@@ -140,6 +238,14 @@ class Settings(BaseSettings):
         if self.facility_query_concurrency <= 0:
             raise ValueError("FACILITY_QUERY_CONCURRENCY must be greater than 0.")
         return self
+
+
+def _validate_auth_url(name: str, value: str) -> None:
+    parsed = urlparse(value)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        raise ValueError(f"{name.upper()} must be an absolute HTTP(S) URL.")
+    if parsed.scheme == "http" and parsed.hostname not in {"localhost", "127.0.0.1", "::1"}:
+        raise ValueError(f"{name.upper()} must use HTTPS outside localhost.")
 
 
 @lru_cache

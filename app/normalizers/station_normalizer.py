@@ -44,7 +44,24 @@ class StationNormalizer:
 
     def _load_stations(self) -> list[Station]:
         data: dict[str, Any] = yaml.safe_load(self.aliases_path.read_text(encoding="utf-8"))
-        return [Station(**row) for row in data.get("stations", [])]
+        operator_defaults = data.get("operator_defaults", {})
+        operator_overrides = data.get("operator_overrides", [])
+        stations: list[Station] = []
+        for raw_row in data.get("stations", []):
+            row = dict(raw_row)
+            line = str(row.get("line")) if row.get("line") is not None else None
+            station_name = row.get("station_name")
+            operator = row.get("operator") or operator_defaults.get(line)
+            for override in operator_overrides:
+                if str(override.get("line")) != line:
+                    continue
+                if station_name not in override.get("station_names", []):
+                    continue
+                operator = override.get("operator") or operator
+                break
+            row["operator"] = operator
+            stations.append(Station(**row))
+        return stations
 
     def resolve(self, query: str) -> StationResolutionResult:
         line = _extract_line(query)
@@ -57,9 +74,25 @@ class StationNormalizer:
             or cleaned in {_clean_query(alias) for alias in station.aliases}
         ]
         if line:
-            exact_candidates = [
+            line_candidates = [
                 station for station in exact_candidates if station.line in {None, line}
-            ] or exact_candidates
+            ]
+            if exact_candidates and not line_candidates:
+                candidates = [
+                    station.model_copy(update={"confidence": 1.0})
+                    for station in exact_candidates
+                ]
+                return StationResolutionResult(
+                    query=query,
+                    matched_station=None,
+                    candidates=candidates,
+                    needs_clarification=True,
+                    clarification_message=_line_mismatch_message(
+                        requested_line=line,
+                        candidates=candidates,
+                    ),
+                )
+            exact_candidates = line_candidates
 
         if len(exact_candidates) == 1:
             return StationResolutionResult(
@@ -109,3 +142,15 @@ DEFAULT_STATION_NORMALIZER = StationNormalizer()
 
 def resolve_station(query: str) -> StationResolutionResult:
     return DEFAULT_STATION_NORMALIZER.resolve(query)
+
+
+def _line_mismatch_message(*, requested_line: str, candidates: list[Station]) -> str:
+    station_name = candidates[0].station_name
+    available_lines = sorted({candidate.line for candidate in candidates if candidate.line})
+    if available_lines:
+        line_text = ", ".join(f"{line}호선" for line in available_lines)
+        return (
+            f"{station_name}역은 현재 역 데이터에서 {line_text}으로 확인됩니다. "
+            f"입력한 {requested_line}호선이 맞는지 다시 확인해 주세요."
+        )
+    return f"{station_name}역의 호선을 확정하지 못했습니다. 호선을 다시 확인해 주세요."

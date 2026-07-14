@@ -2,11 +2,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from app.engine.elevator_status import summarize_elevator_status
 from app.engine.mobility_profile import requires_elevator
 from app.engine.restroom_policy import evaluate_restroom_requirement
 from app.engine.risk_rules import DEFAULT_RISK_RULES, RiskRuleSet
 from app.engine.risk_scoring import calculate_risk_level, clamp_score, has_stale_data, total_score
+from app.normalizers.facility_identity import facility_record_identity
 from app.normalizers.helpers import normalize_station_name
+from app.normalizers.route_normalizer import is_usable_route_candidate
 from app.schemas.accessibility import AlternativeRoute, MobilityProfile, RiskLevel, RiskReason
 from app.schemas.common import DataSourceMeta, FailedSource
 from app.schemas.facility import AccessibleFacility, FacilityIssue, FacilityStatus, FacilityType
@@ -46,6 +49,7 @@ class AccessibilityDecisionEngine:
         failed_sources: list[FailedSource],
         data_sources: list[DataSourceMeta],
     ) -> DecisionResult:
+        routes = [route for route in routes if is_usable_route_candidate(route)]
         if not routes:
             evaluation = self._empty_route_evaluation(failed_sources)
             return DecisionResult(selected=evaluation)
@@ -62,10 +66,15 @@ class AccessibilityDecisionEngine:
             )
             for route in routes
         ]
-        selected = sorted(
+        ranked_evaluations = sorted(
             evaluations,
-            key=lambda item: (item.risk_score, item.route.estimated_minutes or 9999),
-        )[0]
+            key=lambda item: (
+                item.risk_score,
+                item.route.transfer_count,
+                item.route.estimated_minutes or 9999,
+            ),
+        )
+        selected = ranked_evaluations[0]
         alternatives = [
             AlternativeRoute(
                 title=f"대안 경로 {index}",
@@ -79,8 +88,7 @@ class AccessibilityDecisionEngine:
                 route=evaluation.route,
                 expected_risk_level=evaluation.risk_level,
             )
-            for index, evaluation in enumerate(evaluations, start=1)
-            if evaluation.route != selected.route
+            for index, evaluation in enumerate(ranked_evaluations[1:], start=1)
         ]
         return DecisionResult(selected=selected, alternatives=alternatives)
 
@@ -116,19 +124,9 @@ class AccessibilityDecisionEngine:
                     ]
                     if facility.facility_type == FacilityType.ELEVATOR
                 ]
-                available = [item for item in elevators if item.status == FacilityStatus.AVAILABLE]
-                unavailable = [
-                    item
-                    for item in elevators
-                    if item.status in {FacilityStatus.UNAVAILABLE, FacilityStatus.MAINTENANCE}
-                ]
-                unknown = [item for item in elevators if item.status == FacilityStatus.UNKNOWN]
-
-                if available:
-                    accessible.extend(available)
-                    continue
-                if unavailable:
-                    reasons.append(self.rules.reason("elevator_unavailable", station_name=station))
+                summary = summarize_elevator_status(elevators)
+                accessible.extend(summary.available)
+                if summary.restricted:
                     blocked.extend(
                         FacilityIssue(
                             station_name=item.station_name,
@@ -138,12 +136,16 @@ class AccessibilityDecisionEngine:
                             severity="HIGH",
                             reason="필수 엘리베이터가 이용불가 또는 점검 상태입니다.",
                         )
-                        for item in unavailable
+                        for item in summary.restricted
                     )
-                    continue
-                if unknown:
+
+                if summary.answer_state == "MIXED":
+                    reasons.append(self.rules.reason("elevator_mixed", station_name=station))
+                elif summary.answer_state in {"MAINTENANCE", "UNAVAILABLE"}:
+                    reasons.append(self.rules.reason("elevator_unavailable", station_name=station))
+                elif summary.answer_state == "UNKNOWN":
                     reasons.append(self.rules.reason("elevator_unknown", station_name=station))
-                elif not elevators:
+                elif summary.answer_state == "NOT_FOUND":
                     reasons.append(self.rules.reason("elevator_not_found", station_name=station))
 
                 escalators = [
@@ -152,7 +154,7 @@ class AccessibilityDecisionEngine:
                     if facility.facility_type == FacilityType.ESCALATOR
                     and facility.status == FacilityStatus.AVAILABLE
                 ]
-                if mobility_profile.wheelchair and escalators:
+                if mobility_profile.wheelchair and not summary.available and escalators:
                     reasons.append(
                         self.rules.reason("escalator_only_for_wheelchair", station_name=station)
                     )
@@ -215,7 +217,7 @@ class AccessibilityDecisionEngine:
         return RouteEvaluation(
             route=None,
             risk_score=score,
-            risk_level=calculate_risk_level(score, failed_sources=failed_sources),
+            risk_level="UNKNOWN",
             risk_reasons=reasons,
             caution_points=[reason.message for reason in reasons],
             limitations=["경로 후보를 확인하지 못했습니다."],
@@ -262,13 +264,14 @@ def _facilities_for_station(
 
 
 def _dedupe_facilities(facilities: list[AccessibleFacility]) -> list[AccessibleFacility]:
-    seen: set[tuple[str | None, str, FacilityType]] = set()
+    seen: set[tuple[str, ...]] = set()
     deduped: list[AccessibleFacility] = []
     for facility in facilities:
-        identity = (facility.facility_id, facility.station_name, facility.facility_type)
-        if identity in seen:
+        identity = facility_record_identity(facility)
+        if identity is not None and identity in seen:
             continue
-        seen.add(identity)
+        if identity is not None:
+            seen.add(identity)
         deduped.append(facility)
     return deduped
 

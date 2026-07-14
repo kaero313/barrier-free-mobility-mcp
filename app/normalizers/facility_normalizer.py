@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from app.normalizers.helpers import (
@@ -13,9 +14,13 @@ from app.normalizers.helpers import (
 from app.normalizers.status_normalizer import normalize_status
 from app.schemas.facility import AccessibleFacility, FacilityType
 
+TRAILING_LINE_PATTERN = re.compile(r"\((\d{1,2})\)\s*$")
+
 
 def normalize_facility_type(value: object) -> FacilityType:
     text = str(value or "").strip().lower().replace(" ", "").replace("_", "")
+    if text in {"wl", "wheelchairlift"} or "휠체어리프트" in text:
+        return FacilityType.WHEELCHAIR_LIFT
     if text in {"es", "e/s", "esc", "escalator"} or "에스컬레이터" in text:
         return FacilityType.ESCALATOR
     if text in {"ev", "e/v", "el", "e/l", "elv", "elevator"} or "엘리베이터" in text:
@@ -37,6 +42,7 @@ def normalize_facilities(
     station: str | None = None,
     line: str | None = None,
     facility_type: FacilityType | None = None,
+    source_name: str | None = None,
 ) -> list[AccessibleFacility]:
     facilities: list[AccessibleFacility] = []
     for row in rows_from_raw(raw):
@@ -77,7 +83,12 @@ def normalize_facilities(
                 ),
             )
         )
-        parsed_type = normalize_facility_type(
+        if row_line is None:
+            row_line = _infer_line_from_station_fields(
+                row_station,
+                as_str(pick(row, ("STN_CD", "stnCd", "station_code"))),
+            )
+        raw_facility_type = as_str(
             pick(
                 row,
                 (
@@ -85,18 +96,29 @@ def normalize_facilities(
                     "type",
                     "ELVTR_SE",
                     "elvtrSe",
-                    "시설명",
                     "시설종류",
                     "설비종류",
-                    "FCLT_NM",
-                    "fcltNm",
                     "FCLT_KIND",
-                    "ELVTR_NM",
-                    "elvtrNm",
                     "ELVTR_KIND",
+                    "facility_name",
+                    "시설명",
                 ),
             )
         )
+        facility_name = as_str(
+            pick(
+                row,
+                (
+                    "facility_name",
+                    "시설명",
+                    "FCLT_NM",
+                    "fcltNm",
+                    "ELVTR_NM",
+                    "elvtrNm",
+                ),
+            )
+        )
+        parsed_type = normalize_facility_type(raw_facility_type or facility_name)
         if facility_type and parsed_type == FacilityType.UNKNOWN:
             parsed_type = facility_type
         if (
@@ -148,6 +170,7 @@ def normalize_facilities(
                         ),
                     )
                 ),
+                facility_name=facility_name,
                 station_name=row_station,
                 line=row_line,
                 facility_type=parsed_type,
@@ -169,6 +192,19 @@ def normalize_facilities(
                         ),
                     )
                 ),
+                operation_section=as_str(
+                    pick(
+                        row,
+                        (
+                            "operation_section",
+                            "OPR_SEC",
+                            "oprtngSection",
+                            "운행구간",
+                            "운행구역",
+                        ),
+                    )
+                ),
+                source_name=source_name,
                 inside_gate=as_bool(
                     pick(row, ("inside_gate", "개찰구내부", "게이트내부", "gateInoutSe"))
                 ),
@@ -180,3 +216,17 @@ def normalize_facilities(
             )
         )
     return facilities
+
+
+def _infer_line_from_station_fields(
+    station_name: str,
+    station_code: str | None,
+) -> str | None:
+    name_match = TRAILING_LINE_PATTERN.search(station_name)
+    if name_match:
+        return str(int(name_match.group(1)))
+
+    digits = "".join(character for character in (station_code or "") if character.isdigit())
+    if len(digits) == 4 and digits[1] in "12345678":
+        return digits[1]
+    return None

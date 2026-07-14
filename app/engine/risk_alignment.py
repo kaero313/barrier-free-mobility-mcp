@@ -18,8 +18,11 @@ CAUTION_REASON_CODES = {
     "transfer_required",
     "too_many_transfers",
     "no_accessible_restroom_when_required",
+    "restroom_source_unsupported",
     "elevator_unknown",
     "elevator_not_found",
+    "elevator_source_unsupported",
+    "elevator_mixed",
     "elevator_unavailable",
     "stale_data",
 }

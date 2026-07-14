@@ -3,6 +3,10 @@ risk_rules:
     score: 50
     severity: HIGH
     message: "필수 엘리베이터가 비정상 또는 이용불가 상태입니다."
+  elevator_mixed:
+    score: 35
+    severity: CAUTION
+    message: "정상 운행과 점검 또는 이용불가 상태의 엘리베이터가 함께 확인되었습니다."
   elevator_unknown:
     score: 20
     severity: UNKNOWN

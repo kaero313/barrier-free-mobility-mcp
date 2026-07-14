@@ -46,6 +46,52 @@ def test_decision_engine_selects_lowest_risk_route() -> None:
     assert decision.selected.risk_level == "LOW"
 
 
+def test_decision_engine_treats_empty_routes_as_unknown() -> None:
+    decision = AccessibilityDecisionEngine().evaluate_routes(
+        routes=[],
+        mobility_profile=MobilityProfile(wheelchair=True),
+        facilities_by_station={},
+        elevator_status_by_station={},
+        restroom_by_station={},
+        failed_sources=[],
+        data_sources=[],
+    )
+
+    assert decision.selected.route is None
+    assert decision.selected.risk_level == "UNKNOWN"
+    assert decision.selected.limitations == ["경로 후보를 확인하지 못했습니다."]
+
+
+def test_decision_engine_breaks_risk_ties_by_transfers_then_time() -> None:
+    engine = AccessibilityDecisionEngine()
+    profile = MobilityProfile(avoid_many_transfers=False)
+    two_transfers = _route("two-transfers", 2).model_copy(
+        update={"estimated_minutes": 20}
+    )
+    one_transfer_slow = _route("one-slow", 1).model_copy(
+        update={"estimated_minutes": 30}
+    )
+    one_transfer_fast = _route("one-fast", 1).model_copy(
+        update={"estimated_minutes": 25}
+    )
+
+    decision = engine.evaluate_routes(
+        routes=[two_transfers, one_transfer_slow, one_transfer_fast],
+        mobility_profile=profile,
+        facilities_by_station={},
+        elevator_status_by_station={},
+        restroom_by_station={},
+        failed_sources=[],
+        data_sources=[],
+    )
+
+    assert decision.selected.route == one_transfer_fast
+    assert [alternative.route for alternative in decision.alternatives] == [
+        one_transfer_slow,
+        two_transfers,
+    ]
+
+
 def test_decision_engine_adds_restroom_risk_when_required() -> None:
     engine = AccessibilityDecisionEngine()
     profile = MobilityProfile(need_accessible_restroom=True)
@@ -118,6 +164,59 @@ def test_decision_engine_uses_confirmed_elevator_without_unknown_reason() -> Non
     assert "elevator_unknown" not in codes
     assert "elevator_not_found" not in codes
     assert decision.selected.risk_level == "LOW"
+
+
+def test_decision_engine_preserves_mixed_operational_elevator_status() -> None:
+    engine = AccessibilityDecisionEngine()
+    profile = MobilityProfile(
+        wheelchair=True,
+        can_use_stairs=False,
+        need_elevator_only=True,
+    )
+    origin_available = AccessibleFacility(
+        facility_id="H-1",
+        station_name="홍대입구",
+        line="2",
+        facility_type=FacilityType.ELEVATOR,
+        status=FacilityStatus.AVAILABLE,
+        location_description="8번 출구",
+        source_name="elevator_status",
+    )
+    origin_maintenance = origin_available.model_copy(
+        update={
+            "facility_id": "H-2",
+            "status": FacilityStatus.MAINTENANCE,
+            "location_description": "1번 출구",
+        }
+    )
+    destination_available = origin_available.model_copy(
+        update={"facility_id": "S-1", "station_name": "삼성"}
+    )
+
+    decision = engine.evaluate_routes(
+        routes=[_route("a", 0)],
+        mobility_profile=profile,
+        facilities_by_station={},
+        elevator_status_by_station={
+            "홍대입구": [origin_available, origin_maintenance],
+            "삼성": [destination_available],
+        },
+        restroom_by_station={},
+        failed_sources=[],
+        data_sources=[],
+    )
+
+    codes = {reason.code for reason in decision.selected.risk_reasons}
+    blocked_ids = {
+        issue.station_name
+        for issue in decision.selected.blocked_facilities
+        if issue.status == FacilityStatus.MAINTENANCE
+    }
+    assert "elevator_mixed" in codes
+    assert "elevator_unavailable" not in codes
+    assert decision.selected.risk_level == "CAUTION"
+    assert decision.selected.risk_score >= 35
+    assert blocked_ids == {"홍대입구"}
 
 
 def test_decision_engine_ignores_pass_through_station_elevator_status() -> None:

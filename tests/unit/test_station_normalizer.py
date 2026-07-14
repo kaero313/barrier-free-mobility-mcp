@@ -47,3 +47,36 @@ def test_line_name_and_station_text_normalization_regression() -> None:
     assert normalize_station_name("삼성(무역센터)") == "삼성"
     assert normalize_station_name("삼성（무역센터）") == "삼성"
     assert normalize_station_name("강남역") == "강남"
+
+
+@pytest.mark.parametrize(
+    ("query", "expected_station", "expected_line"),
+    [
+        ("9호선 삼성", "삼성", "2"),
+        ("1호선 강남", "강남", "2"),
+    ],
+)
+def test_station_normalizer_rejects_exact_station_on_wrong_line(
+    query: str,
+    expected_station: str,
+    expected_line: str,
+) -> None:
+    result = StationNormalizer().resolve(query)
+
+    assert result.matched_station is None
+    assert result.needs_clarification is True
+    assert [(candidate.station_name, candidate.line) for candidate in result.candidates] == [
+        (expected_station, expected_line)
+    ]
+    assert expected_line in (result.clarification_message or "")
+
+
+def test_line_nine_registry_covers_all_stations_and_operator_segments() -> None:
+    normalizer = StationNormalizer()
+    line_nine = [station for station in normalizer.stations if station.line == "9"]
+
+    assert len(line_nine) == 38
+    assert normalizer.resolve("9호선 여의도").matched_station.operator == (
+        "seoul_metro_line9"
+    )
+    assert normalizer.resolve("9호선 봉은사").matched_station.operator == "seoul_metro"

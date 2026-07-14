@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Literal
 
+from app.normalizers.facility_identity import facility_record_identity
 from app.normalizers.helpers import normalize_station_name
 from app.schemas.accessibility import AccessibleRestroomRequirement, MobilityProfile
 from app.schemas.facility import AccessibleFacility, FacilityStatus, FacilityType
@@ -212,17 +213,14 @@ def _available_restrooms_for_station(
 
 
 def _dedupe_facilities(facilities: list[AccessibleFacility]) -> list[AccessibleFacility]:
-    seen: set[tuple[str | None, str, FacilityType]] = set()
+    seen: set[tuple[str, ...]] = set()
     deduped: list[AccessibleFacility] = []
     for facility in facilities:
-        identity = (
-            facility.facility_id,
-            _station_key(facility.station_name),
-            facility.facility_type,
-        )
-        if identity in seen:
+        identity = facility_record_identity(facility)
+        if identity is not None and identity in seen:
             continue
-        seen.add(identity)
+        if identity is not None:
+            seen.add(identity)
         deduped.append(facility)
     return deduped
 

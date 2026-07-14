@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+from app.core.config import AppMode, Settings
 from app.normalizers.helpers import normalize_station_name
 from app.schemas.route import RouteCandidate, RouteSegment
+from app.services.facility_service import FacilityService
 from app.services.station_context import (
     build_route_station_contexts,
     resolve_station_context,
@@ -19,12 +21,23 @@ def test_station_context_resolves_line_aware_inputs() -> None:
     assert express.station_name == "고속터미널"
     assert express.line == "9"
     assert express.station_id == "0923"
+    assert express.operator == "seoul_metro_line9"
     assert seoul.station_name == "서울역"
     assert seoul.line == "1"
     assert seoul.station_id == "0150"
     assert samsung.station_name == "삼성"
     assert samsung.line == "2"
     assert samsung.station_id == "0219"
+    assert samsung.operator == "seoul_metro"
+
+
+def test_station_context_preserves_supported_line_nine_operator() -> None:
+    context = resolve_station_context(StationService(), "9호선 봉은사")
+
+    assert context.station_name == "봉은사"
+    assert context.line == "9"
+    assert context.station_id == "0929"
+    assert context.operator == "seoul_metro"
 
 
 def test_station_context_explicit_line_overrides_embedded_line() -> None:
@@ -47,6 +60,30 @@ def test_station_context_keeps_ambiguous_transfer_station_as_clarification() -> 
     assert context.line is None
     assert context.station_id is None
     assert context.needs_clarification is True
+
+
+def test_station_context_does_not_pair_wrong_line_with_other_line_station_id() -> None:
+    context = resolve_station_context(StationService(), "9호선 삼성")
+
+    assert context.station_name == "삼성"
+    assert context.line == "9"
+    assert context.station_id is None
+    assert context.needs_clarification is True
+    assert context.candidate_lines == ("2",)
+    assert "2호선" in (context.clarification_message or "")
+
+
+async def test_facility_service_skips_lookup_for_wrong_station_line() -> None:
+    service = FacilityService(
+        settings=Settings(_env_file=None, app_mode=AppMode.MOCK),
+    )
+
+    result = await service.get_elevator_status("9호선 삼성")
+
+    assert result.value == []
+    assert result.data_sources == []
+    assert result.failed_sources[0].source_name == "station_resolution"
+    assert "2호선" in result.limitations[0]
 
 
 def test_route_station_contexts_infer_single_route_line() -> None:

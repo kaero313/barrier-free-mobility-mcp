@@ -6,6 +6,13 @@ from app.normalizers.helpers import as_int, as_str, pick, rows_from_raw, split_s
 from app.schemas.route import RouteCandidate, RouteSegment
 
 
+def is_usable_route_candidate(route: RouteCandidate) -> bool:
+    return bool(
+        route.segments
+        and all(segment.from_station and segment.to_station for segment in route.segments)
+    )
+
+
 def _normalize_segments(value: Any, stations: list[str]) -> list[RouteSegment]:
     if isinstance(value, list):
         segments: list[RouteSegment] = []
@@ -79,10 +86,12 @@ def normalize_route_candidates(
             ),
         )
         stations = split_station_path(raw_stations)
-        if not stations:
-            stations = [row_origin, row_destination]
-
         segments = _normalize_segments(pick(row, ("segments", "구간")), stations)
+        if not stations and segments:
+            stations = _stations_from_segments(segments)
+        if len(stations) < 2 or not segments:
+            continue
+
         candidates.append(
             RouteCandidate(
                 route_id=as_str(pick(row, ("route_id", "id", "경로id"))) or f"route-{index}",
@@ -162,20 +171,18 @@ def _normalize_shortest_route_document(
 
     route_origin = origin or (stations[0] if stations else None)
     route_destination = destination or (stations[-1] if stations else None)
-    if not route_origin or not route_destination:
+    if not route_origin or not route_destination or len(stations) < 2 or not segments:
         return None
 
     return RouteCandidate(
         route_id="shortest-route-live",
         origin=route_origin,
         destination=route_destination,
-        segments=segments or [
-            RouteSegment(from_station=route_origin, to_station=route_destination)
-        ],
+        segments=segments,
         transfer_count=as_int(body.get("trsitNmtm")) or 0,
         estimated_minutes=_seconds_to_minutes(as_int(body.get("totalReqHr"))),
         distance_meters=as_int(body.get("totalDstc")),
-        stations=stations or [route_origin, route_destination],
+        stations=stations,
         raw_summary=(
             f"{route_origin}에서 {route_destination}까지 "
             f"{as_int(body.get('trsitNmtm')) or 0}회 환승 경로"
@@ -199,3 +206,15 @@ def _seconds_to_minutes(value: int | None) -> int | None:
     if value is None:
         return None
     return max(1, (value + 59) // 60)
+
+
+def _stations_from_segments(segments: list[RouteSegment]) -> list[str]:
+    if not segments:
+        return []
+    stations = [segments[0].from_station]
+    for segment in segments:
+        if stations[-1] != segment.from_station:
+            stations.append(segment.from_station)
+        if stations[-1] != segment.to_station:
+            stations.append(segment.to_station)
+    return stations

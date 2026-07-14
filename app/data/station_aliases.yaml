@@ -1,3 +1,32 @@
+operator_defaults:
+  "1": "seoul_metro"
+  "2": "seoul_metro"
+  "3": "seoul_metro"
+  "4": "seoul_metro"
+  "5": "seoul_metro"
+  "6": "seoul_metro"
+  "7": "seoul_metro"
+  "8": "seoul_metro"
+  "9": "seoul_metro_line9"
+
+operator_overrides:
+  - line: "9"
+    operator: "seoul_metro"
+    station_names:
+      - "언주"
+      - "선정릉"
+      - "삼성중앙"
+      - "봉은사"
+      - "종합운동장"
+      - "삼전"
+      - "석촌고분"
+      - "석촌"
+      - "송파나루"
+      - "한성백제"
+      - "올림픽공원"
+      - "둔촌오륜"
+      - "중앙보훈병원"
+
 stations:
   - station_name: "서울역"
     line: "1"
@@ -213,3 +242,147 @@ stations:
       - "잠실역 8호선"
       - "8호선 잠실"
       - "Line 8 잠실"
+  - station_name: "개화"
+    line: "9"
+    station_id: "0901"
+    aliases: ["개화역", "9호선 개화", "Line 9 개화"]
+  - station_name: "김포공항"
+    line: "9"
+    station_id: "0902"
+    aliases: ["김포공항역", "9호선 김포공항", "Line 9 김포공항"]
+  - station_name: "공항시장"
+    line: "9"
+    station_id: "0903"
+    aliases: ["공항시장역", "9호선 공항시장", "Line 9 공항시장"]
+  - station_name: "신방화"
+    line: "9"
+    station_id: "0904"
+    aliases: ["신방화역", "9호선 신방화", "Line 9 신방화"]
+  - station_name: "마곡나루"
+    line: "9"
+    station_id: "0905"
+    aliases: ["마곡나루역", "9호선 마곡나루", "Line 9 마곡나루"]
+  - station_name: "양천향교"
+    line: "9"
+    station_id: "0906"
+    aliases: ["양천향교역", "9호선 양천향교", "Line 9 양천향교"]
+  - station_name: "가양"
+    line: "9"
+    station_id: "0907"
+    aliases: ["가양역", "9호선 가양", "Line 9 가양"]
+  - station_name: "증미"
+    line: "9"
+    station_id: "0908"
+    aliases: ["증미역", "9호선 증미", "Line 9 증미"]
+  - station_name: "등촌"
+    line: "9"
+    station_id: "0909"
+    aliases: ["등촌역", "9호선 등촌", "Line 9 등촌"]
+  - station_name: "염창"
+    line: "9"
+    station_id: "0910"
+    aliases: ["염창역", "9호선 염창", "Line 9 염창"]
+  - station_name: "신목동"
+    line: "9"
+    station_id: "0911"
+    aliases: ["신목동역", "9호선 신목동", "Line 9 신목동"]
+  - station_name: "선유도"
+    line: "9"
+    station_id: "0912"
+    aliases: ["선유도역", "9호선 선유도", "Line 9 선유도"]
+  - station_name: "당산"
+    line: "9"
+    station_id: "0913"
+    aliases: ["당산역", "9호선 당산", "Line 9 당산"]
+  - station_name: "국회의사당"
+    line: "9"
+    station_id: "0914"
+    aliases: ["국회의사당역", "9호선 국회의사당", "Line 9 국회의사당"]
+  - station_name: "샛강"
+    line: "9"
+    station_id: "0916"
+    aliases: ["샛강역", "9호선 샛강", "Line 9 샛강"]
+  - station_name: "노량진"
+    line: "9"
+    station_id: "0917"
+    aliases: ["노량진역", "9호선 노량진", "Line 9 노량진"]
+  - station_name: "노들"
+    line: "9"
+    station_id: "0918"
+    aliases: ["노들역", "9호선 노들", "Line 9 노들"]
+  - station_name: "흑석"
+    line: "9"
+    station_id: "0919"
+    aliases: ["흑석역", "9호선 흑석", "Line 9 흑석"]
+  - station_name: "동작"
+    line: "9"
+    station_id: "0920"
+    aliases: ["동작역", "9호선 동작", "Line 9 동작"]
+  - station_name: "구반포"
+    line: "9"
+    station_id: "0921"
+    aliases: ["구반포역", "9호선 구반포", "Line 9 구반포"]
+  - station_name: "신반포"
+    line: "9"
+    station_id: "0922"
+    aliases: ["신반포역", "9호선 신반포", "Line 9 신반포"]
+  - station_name: "사평"
+    line: "9"
+    station_id: "0924"
+    aliases: ["사평역", "9호선 사평", "Line 9 사평"]
+  - station_name: "신논현"
+    line: "9"
+    station_id: "0925"
+    aliases: ["신논현역", "9호선 신논현", "Line 9 신논현"]
+  - station_name: "언주"
+    line: "9"
+    station_id: "0926"
+    aliases: ["언주역", "9호선 언주", "Line 9 언주"]
+  - station_name: "선정릉"
+    line: "9"
+    station_id: "0927"
+    aliases: ["선정릉역", "9호선 선정릉", "Line 9 선정릉"]
+  - station_name: "삼성중앙"
+    line: "9"
+    station_id: "0928"
+    aliases: ["삼성중앙역", "9호선 삼성중앙", "Line 9 삼성중앙"]
+  - station_name: "봉은사"
+    line: "9"
+    station_id: "0929"
+    aliases: ["봉은사역", "9호선 봉은사", "Line 9 봉은사"]
+  - station_name: "종합운동장"
+    line: "9"
+    station_id: "0930"
+    aliases: ["종합운동장역", "9호선 종합운동장", "Line 9 종합운동장"]
+  - station_name: "삼전"
+    line: "9"
+    station_id: "0931"
+    aliases: ["삼전역", "9호선 삼전", "Line 9 삼전"]
+  - station_name: "석촌고분"
+    line: "9"
+    station_id: "0932"
+    aliases: ["석촌고분역", "9호선 석촌고분", "Line 9 석촌고분"]
+  - station_name: "석촌"
+    line: "9"
+    station_id: "0933"
+    aliases: ["석촌역", "9호선 석촌", "Line 9 석촌"]
+  - station_name: "송파나루"
+    line: "9"
+    station_id: "0934"
+    aliases: ["송파나루역", "9호선 송파나루", "Line 9 송파나루"]
+  - station_name: "한성백제"
+    line: "9"
+    station_id: "0935"
+    aliases: ["한성백제역", "9호선 한성백제", "Line 9 한성백제"]
+  - station_name: "올림픽공원"
+    line: "9"
+    station_id: "0936"
+    aliases: ["올림픽공원역", "9호선 올림픽공원", "Line 9 올림픽공원"]
+  - station_name: "둔촌오륜"
+    line: "9"
+    station_id: "0937"
+    aliases: ["둔촌오륜역", "9호선 둔촌오륜", "Line 9 둔촌오륜"]
+  - station_name: "중앙보훈병원"
+    line: "9"
+    station_id: "0938"
+    aliases: ["중앙보훈병원역", "9호선 중앙보훈병원", "Line 9 중앙보훈병원"]

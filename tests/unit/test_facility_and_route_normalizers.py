@@ -30,6 +30,26 @@ def test_route_normalizer_converts_fixture() -> None:
     assert direct.stations == ["홍대입구", "강남", "삼성"]
 
 
+def test_shortest_route_normalizer_rejects_empty_paths() -> None:
+    raw = {
+        "document": {
+            "body": {
+                "paths": {"path": []},
+                "trsitNmtm": 0,
+                "totalReqHr": 0,
+            }
+        }
+    }
+
+    assert normalize_route_candidates(raw, origin="서울역", destination="삼성") == []
+
+
+def test_generic_route_normalizer_rejects_endpoint_only_row() -> None:
+    raw = {"rows": [{"origin": "서울역", "destination": "삼성"}]}
+
+    assert normalize_route_candidates(raw, origin="서울역", destination="삼성") == []
+
+
 def test_normalizers_handle_live_style_nested_fields() -> None:
     raw_facility = {
         "response": {
@@ -97,6 +117,7 @@ def test_live_facility_fields_use_normalized_station_line_and_status() -> None:
                 "stnNm": "홍대입구역",
                 "dtlPstn": "대합실",
                 "oprtngSitu": "M",
+                "OPR_SEC": "승강장-대합실",
             },
             {
                 "STN_NM": "홍대입구",
@@ -112,11 +133,15 @@ def test_live_facility_fields_use_normalized_station_line_and_status() -> None:
         station="홍대입구",
         line="2",
         facility_type=FacilityType.ELEVATOR,
+        source_name="elevator_status",
     )
     all_facilities = normalize_facilities(raw, station="홍대입구")
 
     assert len(elevators) == 1
     assert elevators[0].status == FacilityStatus.AVAILABLE
+    assert elevators[0].facility_name == "승강기)엘리베이터-홍대입구 내부#1"
+    assert elevators[0].operation_section == "승강장-대합실"
+    assert elevators[0].source_name == "elevator_status"
     assert any(item.facility_type == FacilityType.ESCALATOR for item in all_facilities)
     assert any(item.status == FacilityStatus.MAINTENANCE for item in all_facilities)
 
@@ -141,3 +166,76 @@ def test_station_matching_ignores_terminal_parenthetical_line_marker() -> None:
 
     assert len(facilities) == 1
     assert facilities[0].status == FacilityStatus.AVAILABLE
+
+
+def test_elevator_status_keeps_descriptive_name_and_excludes_wheelchair_lift() -> None:
+    raw = {
+        "rows": [
+            {
+                "STN_NM": "삼성",
+                "ELVTR_NM": "승강기)엘리베이터-삼성 1번 출구측 외부#1",
+                "ELVTR_SE": "EV",
+                "INSTL_PSTN": "1번 출입구",
+                "USE_YN": "보수중",
+            },
+            {
+                "STN_NM": "삼성",
+                "ELVTR_NM": "승강기)휠체어리프트-삼성 연결계단 내부1",
+                "ELVTR_SE": "WL",
+                "INSTL_PSTN": "연결계단",
+                "USE_YN": "보수중",
+            },
+        ]
+    }
+
+    elevators = normalize_facilities(
+        raw,
+        station="삼성",
+        facility_type=FacilityType.ELEVATOR,
+        source_name="elevator_status",
+    )
+    all_facilities = normalize_facilities(raw, station="삼성")
+
+    assert len(elevators) == 1
+    assert elevators[0].facility_name == "승강기)엘리베이터-삼성 1번 출구측 외부#1"
+    assert elevators[0].location_description == "1번 출입구"
+    assert elevators[0].status == FacilityStatus.MAINTENANCE
+    assert any(
+        item.facility_type == FacilityType.WHEELCHAIR_LIFT
+        for item in all_facilities
+    )
+
+
+def test_elevator_status_infers_line_for_transfer_station_filtering() -> None:
+    raw = {
+        "rows": [
+            {
+                "STN_CD": "0329",
+                "STN_NM": "고속터미널(3)",
+                "ELVTR_NM": "승강기)엘리베이터-고속터미널 3호선 내부",
+                "ELVTR_SE": "EV",
+                "INSTL_PSTN": "3호선 승강장",
+                "USE_YN": "사용가능",
+            },
+            {
+                "STN_CD": "2736",
+                "STN_NM": "고속터미널(7)",
+                "ELVTR_NM": "승강기)엘리베이터-고속터미널 7호선 내부",
+                "ELVTR_SE": "EV",
+                "INSTL_PSTN": "7호선 승강장",
+                "USE_YN": "사용가능",
+            },
+        ]
+    }
+
+    facilities = normalize_facilities(
+        raw,
+        station="고속터미널",
+        line="3",
+        facility_type=FacilityType.ELEVATOR,
+        source_name="elevator_status",
+    )
+
+    assert len(facilities) == 1
+    assert facilities[0].line == "3"
+    assert facilities[0].location_description == "3호선 승강장"

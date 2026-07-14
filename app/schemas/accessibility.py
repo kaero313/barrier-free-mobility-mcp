@@ -6,8 +6,19 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from app.schemas.common import CacheStatus, DataSourceMeta, FailedSource, ResponseStatus
-from app.schemas.facility import AccessibleFacility, FacilityIssue, FacilityStatus
+from app.schemas.common import (
+    CacheStatus,
+    DataSourceMeta,
+    FailedSource,
+    ResponseStatus,
+    SourceCoverageStatus,
+)
+from app.schemas.facility import (
+    AccessibleFacility,
+    FacilityIssue,
+    FacilityStatus,
+    FacilityType,
+)
 from app.schemas.route import RouteCandidate
 
 RiskLevel = Literal["LOW", "CAUTION", "HIGH", "UNKNOWN"]
@@ -39,6 +50,29 @@ class AccessibilityEvidenceStatus(StrEnum):
     UNVERIFIED = "UNVERIFIED"
     NOT_APPLICABLE = "NOT_APPLICABLE"
     FAILED = "FAILED"
+
+
+class FacilityQuestionKind(StrEnum):
+    STATUS = "status"
+    LOCATION = "location"
+    EXISTENCE = "existence"
+    OVERVIEW = "overview"
+
+
+class FacilityAnswerState(StrEnum):
+    AVAILABLE = "AVAILABLE"
+    MIXED = "MIXED"
+    MAINTENANCE = "MAINTENANCE"
+    UNAVAILABLE = "UNAVAILABLE"
+    NOT_FOUND = "NOT_FOUND"
+    UNSUPPORTED = "UNSUPPORTED"
+    UNKNOWN = "UNKNOWN"
+
+
+class AlternativeRequestKind(StrEnum):
+    STATION_FACILITY = "station_facility"
+    ROUTE = "route"
+    CURRENT_ROUTE = "current_route"
 
 
 class MobilityProfile(BaseModel):
@@ -74,6 +108,11 @@ class PlaceMention(BaseModel):
 class ParsedAccessibilityQuestion(BaseModel):
     origin: str | None = None
     destination: str | None = None
+    target_station: str | None = None
+    target_line: str | None = None
+    facility_types: list[FacilityType] = Field(default_factory=list)
+    facility_question_kind: FacilityQuestionKind | None = None
+    alternative_request_kind: AlternativeRequestKind | None = None
     mobility_profile: MobilityProfile = Field(default_factory=MobilityProfile)
     station_mentions: list[str] = Field(default_factory=list)
     place_mentions: list[PlaceMention] = Field(default_factory=list)
@@ -103,7 +142,37 @@ class EvidenceSource(BaseModel):
     cache_status: CacheStatus = CacheStatus.BYPASS
     staleness_seconds: int | None = None
     success: bool = True
+    coverage_status: SourceCoverageStatus = SourceCoverageStatus.UNKNOWN
+    coverage_note: str | None = None
     note: str | None = None
+
+
+class FacilityQuestionItem(BaseModel):
+    facility_type: FacilityType
+    answer_state: FacilityAnswerState = FacilityAnswerState.UNKNOWN
+    facilities: list[AccessibleFacility] = Field(default_factory=list)
+
+
+class FacilityQuestionResult(BaseModel):
+    status: ResponseStatus = ResponseStatus.SUCCESS
+    station_name: str
+    line: str | None = None
+    question_kind: FacilityQuestionKind = FacilityQuestionKind.OVERVIEW
+    items: list[FacilityQuestionItem] = Field(default_factory=list)
+    last_checked_at: datetime | None = None
+    evidence_sources: list[EvidenceSource] = Field(default_factory=list)
+    failed_sources: list[FailedSource] = Field(default_factory=list)
+    limitations: list[str] = Field(default_factory=list)
+    unverified_parts: list[str] = Field(default_factory=list)
+    safety_notice: str = DEFAULT_SAFETY_NOTICE
+    user_message: str = Field(
+        default="",
+        description=(
+            "Canonical Markdown final answer for a station facility question. MCP "
+            "clients and LLM agents should preserve its formatting and display this text "
+            "verbatim whenever possible."
+        ),
+    )
 
 
 class UserMessageSummary(BaseModel):
@@ -120,13 +189,38 @@ class UserMessageSummary(BaseModel):
     notices: list[str] = Field(default_factory=list)
 
 
+class ElevatorEvidenceItem(BaseModel):
+    facility_id: str | None = None
+    facility_name: str | None = None
+    location: str | None = None
+    operation_section: str | None = None
+    status: FacilityStatus = FacilityStatus.UNKNOWN
+    status_verified: AccessibilityEvidenceStatus = (
+        AccessibilityEvidenceStatus.UNVERIFIED
+    )
+    status_source_name: str | None = None
+    location_source_name: str | None = None
+    match_method: Literal["same_record", "facility_id", "exact_name", "unmatched"] = (
+        "unmatched"
+    )
+
+
 class AccessibilityCheck(BaseModel):
     station: str
     line: str | None = None
     station_id: str | None = None
+    operator: str | None = None
     role: Literal["origin", "transfer", "destination"]
     elevator_status: FacilityStatus = FacilityStatus.UNKNOWN
+    elevator_answer_state: FacilityAnswerState | None = None
     elevator_location: str | None = None
+    elevator_details: list[ElevatorEvidenceItem] = Field(
+        default_factory=list,
+        description=(
+            "Location-level elevator evidence. Live status records are linked to "
+            "reference location records only by exact facility ID or a unique exact name."
+        ),
+    )
     station_has_elevator: AccessibilityEvidenceStatus = (
         AccessibilityEvidenceStatus.UNVERIFIED
     )
@@ -196,8 +290,9 @@ class AccessibilityResult(BaseModel):
     user_message: str = Field(
         default="",
         description=(
-            "Canonical final answer for ordinary end users. MCP clients and LLM agents "
-            "should display this text verbatim whenever possible."
+            "Canonical Markdown final answer for ordinary end users. MCP clients and LLM "
+            "agents should preserve its formatting and display this text verbatim "
+            "whenever possible."
         ),
     )
     user_message_summary: UserMessageSummary = Field(
@@ -214,12 +309,20 @@ class AccessibilityQuestionResult(BaseModel):
     status: ResponseStatus
     intent: QuestionIntent = "unknown"
     parsed: ParsedAccessibilityQuestion = Field(default_factory=ParsedAccessibilityQuestion)
-    result: AccessibilityResult | None = None
+    result: AccessibilityResult | None = Field(
+        default=None,
+        description="Structured trip accessibility result for trip questions.",
+    )
+    facility_result: FacilityQuestionResult | None = Field(
+        default=None,
+        description="Structured station facility result for facility questions.",
+    )
     user_message: str = Field(
         default="",
         description=(
-            "Canonical final answer for ordinary end users. MCP clients and LLM agents "
-            "should display this text verbatim whenever possible."
+            "Canonical Markdown final answer for ordinary end users. MCP clients and LLM "
+            "agents should preserve its formatting and display this text verbatim "
+            "whenever possible."
         ),
     )
     clarification_needed: bool = False

@@ -1,0 +1,24 @@
+version: 1
+
+operators:
+  seoul_metro:
+    display_name: "서울교통공사"
+  seoul_metro_line9:
+    display_name: "서울시메트로9호선"
+
+sources:
+  facility_info:
+    supported_operators: ["seoul_metro"]
+    coverage_label: "서울교통공사 편의시설 위치 정보"
+  elevator_status:
+    supported_operators: ["seoul_metro"]
+    coverage_label: "서울교통공사 승강기 가동현황"
+  elevator_info:
+    supported_operators: ["seoul_metro"]
+    coverage_label: "서울교통공사 엘리베이터 현황"
+  restroom:
+    supported_operators: ["seoul_metro"]
+    coverage_label: "서울교통공사 장애인화장실 현황"
+  shortest_route:
+    coverage_mode: "query_driven"
+    coverage_label: "서울교통공사 최단경로 이동정보"

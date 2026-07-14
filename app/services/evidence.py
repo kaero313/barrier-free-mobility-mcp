@@ -4,7 +4,13 @@ from datetime import datetime
 from typing import Any
 
 from app.schemas.accessibility import ConfidenceLevel, EvidenceSource, RiskLevel
-from app.schemas.common import CacheStatus, DataSourceMeta, FailedSource, ResponseStatus
+from app.schemas.common import (
+    CacheStatus,
+    DataSourceMeta,
+    FailedSource,
+    ResponseStatus,
+    SourceCoverageStatus,
+)
 
 SOURCE_DISPLAY_NAMES = {
     "shortest_route": "서울교통공사_최단경로이동정보",
@@ -54,10 +60,16 @@ def _build_evidence_sources(
             source_name=source.source_name,
             display_name=display_name_for_source(source.source_name),
             source_type=source.source_type,
-            checked_at=source.fetched_at,
+            checked_at=(
+                None
+                if source.coverage_status == SourceCoverageStatus.UNSUPPORTED
+                else source.fetched_at
+            ),
             cache_status=source.cache_status,
             staleness_seconds=source.staleness_seconds,
             success=source.success,
+            coverage_status=source.coverage_status,
+            coverage_note=source.coverage_note,
             note=_note_for_data_source(source),
         )
         for source in data_sources
@@ -97,6 +109,12 @@ def _build_unverified_parts(
 
     for source in data_sources:
         display_name = display_name_for_source(source.source_name)
+        if source.coverage_status == SourceCoverageStatus.UNSUPPORTED:
+            parts.append(
+                source.coverage_note
+                or f"{display_name}의 데이터 제공 범위 밖입니다."
+            )
+            continue
         if not source.success:
             parts.append(f"{display_name} 응답을 신뢰 가능한 성공 응답으로 확인하지 못했습니다.")
         if source.cache_status == CacheStatus.STALE:
@@ -160,6 +178,8 @@ def _calculate_confidence(
 
 
 def _note_for_data_source(source: DataSourceMeta) -> str:
+    if source.coverage_status == SourceCoverageStatus.UNSUPPORTED:
+        return source.coverage_note or "데이터 제공 범위 밖"
     if not source.success:
         return f"조회 실패: {source.error_message or 'unknown'}"
     if source.cache_status == CacheStatus.STALE:

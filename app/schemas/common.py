@@ -21,6 +21,12 @@ class CacheStatus(StrEnum):
     BYPASS = "BYPASS"
 
 
+class SourceCoverageStatus(StrEnum):
+    SUPPORTED = "SUPPORTED"
+    UNSUPPORTED = "UNSUPPORTED"
+    UNKNOWN = "UNKNOWN"
+
+
 class DataSourceMeta(BaseModel):
     source_name: str
     source_type: Literal["public_api", "cache", "fixture", "internal"] = "public_api"
@@ -29,6 +35,17 @@ class DataSourceMeta(BaseModel):
     staleness_seconds: int | None = None
     success: bool = True
     error_message: str | None = None
+    coverage_status: SourceCoverageStatus = Field(
+        default=SourceCoverageStatus.UNKNOWN,
+        description=(
+            "Whether the requested station/operator is inside this source's registered "
+            "coverage. UNSUPPORTED is distinct from an empty successful result."
+        ),
+    )
+    coverage_note: str | None = Field(
+        default=None,
+        description="User-safe coverage explanation without endpoint or credential data.",
+    )
 
 
 class FailedSource(BaseModel):
