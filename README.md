@@ -11,6 +11,11 @@
 서버 내부에서는 LLM을 호출하지 않습니다. LLM은 MCP tool 결과를 해석하고 설명하는 역할만
 맡고, 실제 판단은 백엔드 규칙 기반 엔진이 수행합니다.
 
+## 프로젝트 자료
+
+- 기술 블로그: [공공데이터로 교통약자 이동 MCP 서버를 만들어보자](https://kaero313.github.io/posts/mcp_3/)
+- 상세 설계·운영 기록: [Barrier-Free Mobility MCP Notion 허브](https://torpid-icon-d8a.notion.site/Barrier-Free-Mobility-MCP-39f4054272b58145b90ed07cd4f38ce0)
+
 ## 설계 원칙
 
 - 일반 길찾기보다 엘리베이터, 환승·출구 동선, 장애인화장실 근거를 우선합니다.
