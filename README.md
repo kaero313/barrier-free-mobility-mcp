@@ -1,4 +1,4 @@
-﻿# Barrier-Free Mobility MCP
+# Barrier-Free Mobility MCP
 
 [![CI](https://github.com/kaero313/barrier-free-mobility-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/kaero313/barrier-free-mobility-mcp/actions/workflows/ci.yml)
 
@@ -229,3 +229,57 @@ RESTROOM_API_URL=
 | 실제 정보가 아닌 예시가 나옴 | `.env`의 `APP_MODE`가 `mock`인지 확인합니다 |
 | 답변에 미확인 정보가 많음 | API 실패, 부분 지원 역, 제공되지 않는 동선 정보인지 확인합니다 |
 
+## 개발자 참고
+
+핵심 판단은 서버 내부 LLM이 아니라 규칙 기반 엔진에서 수행됩니다. 공공 API 응답은 adapter와
+normalizer를 거쳐 Pydantic v2 구조로 변환되며, 일부 데이터 소스가 실패해도 가능한 범위에서
+부분 결과를 반환합니다.
+
+### MCP 도구
+
+| 도구 | 용도 |
+|---|---|
+| `answer_accessibility_question` | 자연어 경로, 시설, 대안 질문 처리 |
+| `generate_accessibility_brief` | 구조화 입력으로 사용자용 답변 생성 |
+| `check_accessible_trip` | 경로 판단과 상세 근거 반환 |
+| `resolve_station` | 역명, 호선, 별칭 해석 |
+| `get_station_facilities` | 역 편의시설 조회 |
+| `get_elevator_status` | 엘리베이터 위치와 운행 상태 조회 |
+| `get_accessible_restroom` | 장애인화장실 조회 |
+| `get_route_candidates` | 공공 API 경로 후보 조회 |
+
+`user_message`는 최종 사용자에게 우선 표시할 답변입니다. `status`, `risk_level`,
+`accessibility_checks`, `evidence_sources`, `failed_sources`, `limitations`는 판단 근거와 검증에
+사용합니다. LLM 클라이언트가 구조화 필드를 보고 별도의 안전 보장을 만들어서는 안 됩니다.
+
+### 구조
+
+```text
+LLM client → MCP tools → services → public API adapters
+                              ↓
+                    deterministic engine
+                              ↓
+                 Pydantic result + user_message
+```
+
+상세한 계층 경계와 설계 결정은 [아키텍처 문서](docs/architecture.md)를 참고합니다.
+
+### 검증
+
+```powershell
+uv run --frozen pytest
+uv run --frozen ruff check .
+uv run --frozen python scripts/check_release_safety.py
+```
+
+실제 API 답변 품질, MCP 상호운용성, 사용자 리뷰 절차는
+[검증 가이드](docs/validation.md)에 정리되어 있습니다.
+
+## 문서
+
+| 문서 | 내용 |
+|---|---|
+| [아키텍처](docs/architecture.md) | 데이터 흐름, 계층 경계, 주요 설계 결정 |
+| [검증 가이드](docs/validation.md) | 자동 테스트, live 평가, MCP 상호운용성, 사용성 리뷰 |
+| [ROADMAP](ROADMAP.md) | 아직 완료되지 않은 작업 |
+| [AGENTS](AGENTS.md) | repository 작업 규칙 |
