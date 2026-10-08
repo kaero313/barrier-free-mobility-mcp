@@ -29,6 +29,14 @@ tmp/
 temp/
 artifacts/usability/
 
+# Local verification evidence (scripts/verify.py)
+.harness/
+
+# Claude Code: share settings.json and skills only
+.claude/*
+!.claude/settings.json
+!.claude/skills/
+
 # Internal handoff and generated live API samples
 codex_handoff.md
 tests/fixtures/live_samples/

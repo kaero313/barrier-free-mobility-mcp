@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import fnmatch
+import os
 import re
 import sys
 from dataclasses import dataclass
@@ -51,6 +52,7 @@ EXCLUDED_DIR_NAMES = {
     ".pytest_cache",
     ".ruff_cache",
     ".mypy_cache",
+    ".harness",
     "dist",
     "build",
     "htmlcov",
@@ -161,10 +163,12 @@ def check_ignore_file(path: Path, required_patterns: set[str]) -> list[ReleaseSa
 
 def iter_release_candidate_files(root: Path) -> list[Path]:
     candidates: list[Path] = []
-    for path in root.rglob("*"):
-        if path.is_dir() or not is_release_candidate(root, path):
-            continue
-        candidates.append(path)
+    for directory, dir_names, file_names in os.walk(root):
+        dir_names[:] = [name for name in dir_names if name not in EXCLUDED_DIR_NAMES]
+        for file_name in file_names:
+            path = Path(directory) / file_name
+            if is_release_candidate(root, path):
+                candidates.append(path)
     return sorted(candidates)
 
 

@@ -17,6 +17,7 @@ tmp/
 temp/
 artifacts/usability/
 artifacts/
+.harness/
 
 tests/
 scripts/
@@ -24,6 +25,9 @@ docs/
 deploy/
 .github/
 AGENTS.md
+CLAUDE.md
+.claude/
+.agents/
 ROADMAP.md
 codex_handoff.md
 docker-compose.yml

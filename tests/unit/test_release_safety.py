@@ -64,6 +64,9 @@ def test_release_scanner_excludes_local_artifacts(tmp_path: Path) -> None:
     )
     tmp_path.joinpath(".pytest_cache").mkdir()
     tmp_path.joinpath(".pytest_cache", "x").write_text("cache\n")
+    evidence_dir = tmp_path / ".harness" / "runs" / "run-1"
+    evidence_dir.mkdir(parents=True)
+    evidence_dir.joinpath("result.json").write_text(f"{mcp_key_marker}=real-local-value\n")
 
     issues = collect_release_safety_issues(tmp_path)
 
@@ -71,6 +74,7 @@ def test_release_scanner_excludes_local_artifacts(tmp_path: Path) -> None:
     assert not is_release_candidate(tmp_path, tmp_path / ".env")
     assert not is_release_candidate(tmp_path, tmp_path / ".tmp-auth-smoke-out.txt")
     assert not is_release_candidate(tmp_path, tmp_path / ".venv" / "secret.txt")
+    assert not is_release_candidate(tmp_path, evidence_dir / "result.json")
 
 
 def test_release_scanner_detects_secret_assignment_without_value_leak(tmp_path: Path) -> None:
