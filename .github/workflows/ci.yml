@@ -36,14 +36,8 @@ jobs:
       - name: Sync locked dependencies
         run: uv sync --frozen --all-groups
 
-      - name: Run Ruff
-        run: uv run --frozen ruff check .
-
-      - name: Run tests
-        run: uv run --frozen pytest
-
-      - name: Check release safety
-        run: uv run --frozen python scripts/check_release_safety.py
+      - name: Run verification gate
+        run: uv run --frozen python scripts/verify.py
 
   docker:
     name: Build Docker image

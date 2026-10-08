@@ -20,9 +20,7 @@ def test_ci_runs_locked_quality_checks_and_docker_build() -> None:
     )
 
     assert "uv sync --frozen --all-groups" in workflow
-    assert "uv run --frozen ruff check ." in workflow
-    assert "uv run --frozen pytest" in workflow
-    assert "scripts/check_release_safety.py" in workflow
+    assert "uv run --frozen python scripts/verify.py" in workflow
     assert "docker build" in workflow
 
 
