@@ -267,10 +267,10 @@ LLM client → MCP tools → services → public API adapters
 ### 검증
 
 ```powershell
-uv run --frozen pytest
-uv run --frozen ruff check .
-uv run --frozen python scripts/check_release_safety.py
+uv run --frozen python scripts/verify.py
 ```
+
+CI와 같은 검증을 실행하고 결과를 `.harness/runs/<id>/result.json`에 남깁니다.
 
 실제 API 답변 품질, MCP 상호운용성, 사용자 리뷰 절차는
 [검증 가이드](docs/validation.md)에 정리되어 있습니다.

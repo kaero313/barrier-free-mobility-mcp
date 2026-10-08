@@ -1,6 +1,6 @@
 # 검증 및 사용자 리뷰 가이드
 
-최종 검토일: 2026-07-15
+최종 검토일: 2026-10-08
 
 이 문서는 Barrier-Free Mobility MCP의 자동 테스트, live 공공 API 평가, MCP client
 상호운용성 검사와 사람 중심 사용성 리뷰 절차를 정리합니다.
@@ -18,12 +18,20 @@
 ## 자동 회귀 테스트
 
 기본 테스트는 `APP_MODE=mock`, memory cache로 실행하며 외부 API를 호출하지 않습니다.
+`tests/conftest.py`가 `.env`를 읽지 않게 하고 API key 환경변수를 지우며, localhost 외
+접속을 차단합니다. 실제 공공 API 호출이 테스트에 섞이면 그 테스트가 바로 실패합니다.
 
 ```powershell
-uv run --frozen pytest
-uv run --frozen ruff check .
-uv run --frozen python scripts/check_release_safety.py
+uv run --frozen python scripts/verify.py          # 전체 검증
+uv run --frozen python scripts/verify.py --fast   # pytest 제외
 ```
+
+`verify.py`는 CI와 같은 검증 게이트입니다. Ruff → 배포 안전 검사 → `uv lock --check` →
+pytest 순서로 실행하고 첫 실패에서 멈춥니다. 결과는 `.harness/runs/<id>/result.json`에
+기준 commit, 실행 전후 파일 hash, 단계별 exit code와 출력 끝부분으로 남습니다. 실행 중
+다른 작업이 파일을 바꾸면 결과가 어느 상태를 검증했는지 알 수 없으므로
+`workspace_mutated`로 실패 처리합니다. 검증 게이트와 테스트 격리 자체는
+`tests/unit/test_verify_script.py`, `tests/unit/test_isolation.py`가 검증합니다.
 
 주요 검증 범위:
 
@@ -38,8 +46,8 @@ uv run --frozen python scripts/check_release_safety.py
 - canonical `user_message` 구조와 금지 표현
 - 인증, 입력 제한, secret 비노출
 
-2026년 7월 15일 local 기준 전체 테스트 447개가 통과했습니다. 테스트 수는 구현에 따라
-변할 수 있으므로 완료 여부는 고정된 개수보다 명령의 exit code로 판단합니다.
+테스트 수는 구현에 따라 변하므로 문서에 고정하지 않습니다. 통과 여부와 테스트 수는
+마지막 변경 뒤에 실행한 `result.json`의 값을 사용합니다.
 
 ## Live 공공 API 품질 평가
 
@@ -121,6 +129,9 @@ API key, endpoint와 raw query parameter는 출력하지 않습니다.
 ```powershell
 uv run python scripts/check_mcp_interoperability.py
 ```
+
+8000 포트가 이미 사용 중이면 터미널 1에서 `$env:MCP_PORT = "8765"`를 먼저 설정하고,
+터미널 2에 `--url http://127.0.0.1:8765/mcp`를 넘깁니다.
 
 선택 옵션:
 
@@ -252,10 +263,7 @@ fingerprint 변경과 점수 변화를 보여줍니다. 자유 의견 원문은 
 ## 배포 전 검증
 
 ```powershell
-uv lock --check
-uv run --frozen python scripts/check_release_safety.py
-uv run --frozen pytest
-uv run --frozen ruff check .
+uv run --frozen python scripts/verify.py
 docker build -t barrier-free-mobility-mcp:local .
 ```
 
