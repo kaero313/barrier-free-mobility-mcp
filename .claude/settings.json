@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "deny": [
+      "Read(./.env)",
+      "Read(./deploy/hosted/.env.hosted)"
+    ],
+    "ask": [
+      "Bash(git push)",
+      "Bash(git push *)",
+      "Bash(git reset --hard)",
+      "Bash(git reset --hard *)"
+    ],
+    "allow": [
+      "Bash(uv run --frozen python scripts/verify.py)",
+      "Bash(uv run --frozen python scripts/verify.py *)",
+      "Bash(uv run --frozen pytest)",
+      "Bash(uv run --frozen pytest *)",
+      "Bash(uv run --frozen ruff check *)"
+    ]
+  }
+}

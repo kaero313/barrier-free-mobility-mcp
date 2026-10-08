@@ -1,6 +1,7 @@
 # AGENTS.md — Barrier-Free Mobility MCP
 
-이 파일은 Codex가 repository에서 작업할 때 자동으로 참고해야 하는 개발 지침이다.
+이 파일은 Codex와 Claude Code가 repository에서 작업할 때 자동으로 참고해야 하는 개발 지침이다.
+Claude Code는 `CLAUDE.md`의 `@AGENTS.md`로 이 파일을 읽는다.
 
 ## Project Summary
 
@@ -30,6 +31,8 @@ This is not a simple public API wrapper. The core feature is `check_accessible_t
 - All MCP tool outputs must use Pydantic v2 schemas.
 - External public API failures must return partial structured responses when possible.
 - Never log or return public API service keys.
+- Never open or print `.env` or `deploy/hosted/.env.hosted` with any tool (the Read deny does
+  not stop `cat` or Codex). Running the app or a requested live script that loads them is fine.
 - Never claim that a route is safe or fully accessible when end-to-end path evidence is
   incomplete.
 - Distinguish `confirmed`, `unverified`, `not found`, `unsupported`, and upstream failure.
@@ -81,12 +84,28 @@ Implement and preserve these tools:
 
 ## Testing Requirements
 
-Before claiming completion, run:
+Before claiming completion, run the same gate as CI:
 
 ```bash
-uv run pytest
-uv run ruff check .
+uv run --frozen python scripts/verify.py
+uv run --frozen python scripts/verify.py --fast   # without pytest, for quick iteration
 ```
+
+- Report counts and pass/fail only from a `.harness/runs/<id>/result.json` written after
+  the last change. Never report a skipped, not-run, or `workspace_mutated` run as passing.
+- If the gate fails only because of changes outside your task (for example another session
+  editing the same tree), report the run id, the cause, and targeted test results as a
+  partial check, not as a passing gate.
+- Tests cannot read `.env`, see API keys, or reach non-loopback hosts (`tests/conftest.py`).
+  Use fixtures, respx, or monkeypatch instead of real endpoints.
+- The gate covers mock-mode behavior only. Do not present it as live API accuracy or
+  user-review results; name the live check or review that is still needed.
+- After changing MCP tool/prompt/resource registration or signatures, `app/main.py`, auth, or
+  HTTP middleware, run the MCP interoperability check in `docs/validation.md`. If it cannot
+  run, report it as not run.
+- Run live scripts (`evaluate_live_quality.py`, `check_route_accuracy.py`,
+  `collect_*.py`, `generate_usability_review.py --mode live`) only when the user asks.
+  They use real service keys and public API quotas.
 
 Add or update tests for:
 
@@ -106,8 +125,16 @@ Use mock mode and fixtures before relying on live public APIs.
 Freeze feature expansion while answer quality, data accuracy, or repository reproducibility
 has unresolved work.
 
+Before finishing a change to `app/engine`, `app/services/user_message*.py`, evidence status
+handling, or MCP tool and Pydantic schemas, apply `.claude/skills/accessibility-review`
+(Codex reads it through `.agents/skills`).
+
+Do not create commits, even on another branch or worktree, unless the user asks. Leave changes
+in the working tree and report them. `git push` and `git reset --hard` need user confirmation.
+
 ## Definition of Done
 
+- `scripts/verify.py` passes and the report names its run id.
 - FastMCP server starts.
 - Mock mode works without external API calls.
 - `check_accessible_trip` returns `AccessibilityResult`.
