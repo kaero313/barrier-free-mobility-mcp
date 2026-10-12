@@ -22,6 +22,7 @@ cases:
     persona: "계단과 에스컬레이터를 이용할 수 없는 휠체어 이용자"
     review_focus:
       - "첫 세 줄만 읽어도 현재 판단과 가장 먼저 할 일을 알 수 있는가"
+      - "첫 문장과 확인 질문이 휠체어 조건에 맞게 구체적인가"
       - "역별 표가 상단 요약을 불필요하게 반복하지 않는가"
       - "미확인 동선을 가능하다고 단정하지 않는가"
     modes: [mock, live]
@@ -31,7 +32,7 @@ cases:
     source_case: hongdae_to_samsung_stroller
     persona: "계단 이용이 어려운 유모차 이용자"
     review_focus:
-      - "유모차 조건이 답변 판단에 반영됐는가"
+      - "첫 문장과 확인 질문이 유모차 조건에 맞게 구체적인가"
       - "휠체어 이용자로 잘못 표현하지 않는가"
     modes: [mock, live]
     basic: true
@@ -41,7 +42,7 @@ cases:
     category: trip_accessibility
     persona: "보행기를 사용하고 계단 이용이 어려운 사람"
     review_focus:
-      - "보행기와 계단 불가 조건이 명시되는가"
+      - "첫 문장과 확인 질문이 보행 보조기구와 계단 불가 조건에 맞는가"
       - "엘리베이터 동선 미확인 범위가 이해되는가"
     modes: [mock, live]
     basic: true

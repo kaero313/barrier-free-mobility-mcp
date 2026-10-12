@@ -107,6 +107,9 @@ def test_html_contains_accessible_review_controls_and_import_limits() -> None:
     assert 'input.type = "checkbox"' in html
     assert "renderMarkdownMessage" in html
     assert 'document.createElement("table")' in html
+    assert "appendTableCellContent" in html
+    assert 'document.createElement("br")' in html
+    assert "document.createTextNode(part)" in html
     assert "elements.answerRaw.textContent" in html
     assert "MAX_IMPORT_BYTES = 1048576" in html
     assert "comment.length > 1000" in html

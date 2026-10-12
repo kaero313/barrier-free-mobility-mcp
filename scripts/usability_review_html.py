@@ -462,6 +462,15 @@ HTML_TEMPLATE = r'''<!doctype html>
       vertical-align: top;
     }
 
+    .rendered-answer td {
+      line-height: 1.55;
+    }
+
+    .rendered-answer th:first-child,
+    .rendered-answer td:first-child {
+      min-width: 170px;
+    }
+
     .rendered-answer th:last-child,
     .rendered-answer td:last-child {
       border-right: 0;
@@ -891,6 +900,22 @@ HTML_TEMPLATE = r'''<!doctype html>
       return element;
     }
 
+    function appendInlineMarkdown(parent, text) {
+      const pattern = /\*\*([^*]+)\*\*/g;
+      let last = 0;
+      let match;
+      while ((match = pattern.exec(text)) !== null) {
+        if (match.index > last) {
+          parent.append(document.createTextNode(text.slice(last, match.index)));
+        }
+        parent.append(createElement("strong", "", match[1]));
+        last = pattern.lastIndex;
+      }
+      if (last < text.length) {
+        parent.append(document.createTextNode(text.slice(last)));
+      }
+    }
+
     function splitTableRow(line) {
       const value = line.trim().replace(/^\|/, "").replace(/\|$/, "");
       const cells = [];
@@ -934,13 +959,27 @@ HTML_TEMPLATE = r'''<!doctype html>
       );
     }
 
+    function appendTableCellContent(cellElement, value) {
+      const parts = value.split(/<br\s*\/?\s*>/i);
+      parts.forEach((part, index) => {
+        if (index > 0) {
+          cellElement.append(document.createElement("br"));
+        }
+        cellElement.append(document.createTextNode(part));
+      });
+    }
+
     function appendMarkdownTable(container, lines, startIndex) {
       const header = splitTableRow(lines[startIndex]);
       const wrapper = createElement("div", "table-wrap");
       const table = document.createElement("table");
       const thead = document.createElement("thead");
       const headerRow = document.createElement("tr");
-      header.forEach((cell) => headerRow.append(createElement("th", "", cell)));
+      header.forEach((cell) => {
+        const headerCell = document.createElement("th");
+        appendTableCellContent(headerCell, cell);
+        headerRow.append(headerCell);
+      });
       thead.append(headerRow);
       table.append(thead);
 
@@ -949,7 +988,9 @@ HTML_TEMPLATE = r'''<!doctype html>
       while (index < lines.length && lines[index].trim().startsWith("|")) {
         const row = document.createElement("tr");
         splitTableRow(lines[index]).forEach((cell) => {
-          row.append(createElement("td", "", cell));
+          const tableCell = document.createElement("td");
+          appendTableCellContent(tableCell, cell);
+          row.append(tableCell);
         });
         tbody.append(row);
         index += 1;
@@ -1011,7 +1052,9 @@ HTML_TEMPLATE = r'''<!doctype html>
           paragraphLines.push(lines[index].trim());
           index += 1;
         }
-        container.append(createElement("p", "", paragraphLines.join(" ")));
+        const bodyParagraph = createElement("p", "");
+        appendInlineMarkdown(bodyParagraph, paragraphLines.join(" "));
+        container.append(bodyParagraph);
       }
     }
 
