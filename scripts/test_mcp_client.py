@@ -24,6 +24,7 @@ HONGDAE = "\ud64d\ub300\uc785\uad6c"
 SAMSUNG = "\uc0bc\uc131"
 SEOUL_LINE_1 = "1\ud638\uc120 \uc11c\uc6b8\uc5ed"
 CITY_HALL_LINE_1 = "1\ud638\uc120 \uc2dc\uccad"
+EXPRESS_TERMINAL_LINE_7 = "7\ud638\uc120 \uace0\uc18d\ud130\ubbf8\ub110"
 EXPRESS_TERMINAL_LINE_9 = "9\ud638\uc120 \uace0\uc18d\ud130\ubbf8\ub110"
 YEOUIDO_LINE_9 = "9\ud638\uc120 \uc5ec\uc758\ub3c4"
 SADANG_LINE_4 = "4\ud638\uc120 \uc0ac\ub2f9"
@@ -58,7 +59,7 @@ COVERAGE_CASES = [
     {
         "name": "restroom_required_missing",
         "origin": KONKUK_LINE_7,
-        "destination": EXPRESS_TERMINAL_LINE_9,
+        "destination": EXPRESS_TERMINAL_LINE_7,
         "mobility_profile": {
             **BASIC_PROFILE,
             "need_accessible_restroom": True,
