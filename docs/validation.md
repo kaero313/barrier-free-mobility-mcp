@@ -100,6 +100,21 @@ uv run python scripts/check_route_accuracy.py `
 대표 직행 경로의 환승 수, 노선, 금지 환승역과 역 순서를 fixture 기대값과 비교합니다.
 API key, endpoint와 raw query parameter는 출력하지 않습니다.
 
+## 경로 API 역 코드 수집·재검증
+
+등록된 역·호선의 최단경로 API 코드는 live API 응답에서 직접 수집해 검증합니다.
+노선별 종점 간 경로를 요청해 경로 위 모든 역의 `stnCd`를 수집하고, 종점 쌍을 코드로
+다시 요청해 수용 여부를 확인합니다.
+
+```powershell
+uv run python scripts/collect_route_station_codes.py --search-date "2026-08-04 09:30:00"
+uv run python scripts/collect_route_station_codes.py --search-date "2026-08-04 09:30:00" --write
+```
+
+`--write` 없이 실행하면 수집 결과와 기존 데이터의 충돌만 보고합니다. 충돌이 있으면
+파일을 수정하지 않으므로, 기존 값이 잘못된 경우 먼저 수동으로 바로잡은 뒤 다시
+실행합니다. 한국철도공사 관할 1호선 지상 구간은 수집돼도 등록하지 않습니다.
+
 ## MCP client 상호운용성
 
 검증 대상은 특정 제품 UI가 아니라 streamable HTTP transport와 tool, prompt, resource 계약입니다.

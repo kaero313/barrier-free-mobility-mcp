@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from app.normalizers.station_normalizer import DEFAULT_STATION_NORMALIZER
 from app.services.route_station_codes import (
     load_route_station_codes,
     resolve_route_station_code,
@@ -23,5 +24,15 @@ def test_route_station_code_requires_verified_station_and_line_pair() -> None:
 def test_route_station_code_mapping_has_unique_nonempty_values_per_pair() -> None:
     mappings = load_route_station_codes()
 
-    assert len(mappings) >= 30
+    assert len(mappings) >= 320
     assert all(station and line and code for (station, line), code in mappings.items())
+
+
+def test_every_registered_station_line_pair_has_a_verified_route_code() -> None:
+    missing = [
+        f"{station.line}:{station.station_name}"
+        for station in DEFAULT_STATION_NORMALIZER.stations
+        if resolve_route_station_code(station.station_name, station.line) is None
+    ]
+
+    assert missing == []

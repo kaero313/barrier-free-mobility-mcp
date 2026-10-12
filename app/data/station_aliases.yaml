@@ -386,3 +386,1029 @@ stations:
     line: "9"
     station_id: "0938"
     aliases: ["중앙보훈병원역", "9호선 중앙보훈병원", "Line 9 중앙보훈병원"]
+  # 2026-08-01: 최단경로 API 응답으로 검증한 역 등록.
+  # 아래 station_id는 해당 API의 stnCd 값을 사용한다.
+  - station_name: "종각"
+    line: "1"
+    station_id: "0152"
+    aliases: ["종각역", "1호선 종각", "Line 1 종각"]
+  - station_name: "종로3가"
+    line: "1"
+    station_id: "0153"
+    aliases: ["종로3가역", "1호선 종로3가", "Line 1 종로3가"]
+  - station_name: "종로5가"
+    line: "1"
+    station_id: "0154"
+    aliases: ["종로5가역", "1호선 종로5가", "Line 1 종로5가"]
+  - station_name: "동대문"
+    line: "1"
+    station_id: "0155"
+    aliases: ["동대문역", "1호선 동대문", "Line 1 동대문"]
+  - station_name: "신설동"
+    line: "1"
+    station_id: "0156"
+    aliases: ["신설동역", "1호선 신설동", "Line 1 신설동"]
+  - station_name: "제기동"
+    line: "1"
+    station_id: "0157"
+    aliases: ["제기동역", "1호선 제기동", "Line 1 제기동"]
+  - station_name: "청량리"
+    line: "1"
+    station_id: "0158"
+    aliases: ["청량리역", "1호선 청량리", "Line 1 청량리"]
+  - station_name: "동묘앞"
+    line: "1"
+    station_id: "0159"
+    aliases: ["동묘앞역", "1호선 동묘앞", "Line 1 동묘앞"]
+  - station_name: "까치산"
+    line: "2"
+    station_id: "0200"
+    aliases: ["까치산역", "2호선 까치산", "Line 2 까치산"]
+  - station_name: "을지로입구"
+    line: "2"
+    station_id: "0202"
+    aliases: ["을지로입구역", "2호선 을지로입구", "Line 2 을지로입구"]
+  - station_name: "을지로3가"
+    line: "2"
+    station_id: "0203"
+    aliases: ["을지로3가역", "2호선 을지로3가", "Line 2 을지로3가"]
+  - station_name: "을지로4가"
+    line: "2"
+    station_id: "0204"
+    aliases: ["을지로4가역", "2호선 을지로4가", "Line 2 을지로4가"]
+  - station_name: "신당"
+    line: "2"
+    station_id: "0206"
+    aliases: ["신당역", "2호선 신당", "Line 2 신당"]
+  - station_name: "상왕십리"
+    line: "2"
+    station_id: "0207"
+    aliases: ["상왕십리역", "2호선 상왕십리", "Line 2 상왕십리"]
+  - station_name: "한양대"
+    line: "2"
+    station_id: "0209"
+    aliases: ["한양대역", "2호선 한양대", "Line 2 한양대"]
+  - station_name: "뚝섬"
+    line: "2"
+    station_id: "0210"
+    aliases: ["뚝섬역", "2호선 뚝섬", "Line 2 뚝섬"]
+  - station_name: "성수"
+    line: "2"
+    station_id: "0211"
+    aliases: ["성수역", "2호선 성수", "Line 2 성수"]
+  - station_name: "구의"
+    line: "2"
+    station_id: "0213"
+    aliases: ["구의역", "2호선 구의", "Line 2 구의"]
+  - station_name: "강변"
+    line: "2"
+    station_id: "0214"
+    aliases: ["강변역", "2호선 강변", "Line 2 강변"]
+  - station_name: "잠실나루"
+    line: "2"
+    station_id: "0215"
+    aliases: ["잠실나루역", "2호선 잠실나루", "Line 2 잠실나루"]
+  - station_name: "잠실새내"
+    line: "2"
+    station_id: "0217"
+    aliases: ["잠실새내역", "2호선 잠실새내", "Line 2 잠실새내"]
+  - station_name: "종합운동장"
+    line: "2"
+    station_id: "0218"
+    aliases: ["종합운동장역", "2호선 종합운동장", "Line 2 종합운동장"]
+  - station_name: "선릉"
+    line: "2"
+    station_id: "0220"
+    aliases: ["선릉역", "2호선 선릉", "Line 2 선릉"]
+  - station_name: "역삼"
+    line: "2"
+    station_id: "0221"
+    aliases: ["역삼역", "2호선 역삼", "Line 2 역삼"]
+  - station_name: "서초"
+    line: "2"
+    station_id: "0224"
+    aliases: ["서초역", "2호선 서초", "Line 2 서초"]
+  - station_name: "방배"
+    line: "2"
+    station_id: "0225"
+    aliases: ["방배역", "2호선 방배", "Line 2 방배"]
+  - station_name: "낙성대"
+    line: "2"
+    station_id: "0227"
+    aliases: ["낙성대역", "2호선 낙성대", "Line 2 낙성대"]
+  - station_name: "서울대입구"
+    line: "2"
+    station_id: "0228"
+    aliases: ["서울대입구역", "2호선 서울대입구", "Line 2 서울대입구"]
+  - station_name: "봉천"
+    line: "2"
+    station_id: "0229"
+    aliases: ["봉천역", "2호선 봉천", "Line 2 봉천"]
+  - station_name: "신림"
+    line: "2"
+    station_id: "0230"
+    aliases: ["신림역", "2호선 신림", "Line 2 신림"]
+  - station_name: "신대방"
+    line: "2"
+    station_id: "0231"
+    aliases: ["신대방역", "2호선 신대방", "Line 2 신대방"]
+  - station_name: "구로디지털단지"
+    line: "2"
+    station_id: "0232"
+    aliases: ["구로디지털단지역", "2호선 구로디지털단지", "Line 2 구로디지털단지"]
+  - station_name: "대림"
+    line: "2"
+    station_id: "0233"
+    aliases: ["대림역", "2호선 대림", "Line 2 대림"]
+  - station_name: "문래"
+    line: "2"
+    station_id: "0235"
+    aliases: ["문래역", "2호선 문래", "Line 2 문래"]
+  - station_name: "영등포구청"
+    line: "2"
+    station_id: "0236"
+    aliases: ["영등포구청역", "2호선 영등포구청", "Line 2 영등포구청"]
+  - station_name: "당산"
+    line: "2"
+    station_id: "0237"
+    aliases: ["당산역", "2호선 당산", "Line 2 당산"]
+  - station_name: "신촌"
+    line: "2"
+    station_id: "0240"
+    aliases: ["신촌역", "2호선 신촌", "Line 2 신촌"]
+  - station_name: "이대"
+    line: "2"
+    station_id: "0241"
+    aliases: ["이대역", "2호선 이대", "Line 2 이대"]
+  - station_name: "아현"
+    line: "2"
+    station_id: "0242"
+    aliases: ["아현역", "2호선 아현", "Line 2 아현"]
+  - station_name: "충정로"
+    line: "2"
+    station_id: "0243"
+    aliases: ["충정로역", "2호선 충정로", "Line 2 충정로"]
+  - station_name: "용답"
+    line: "2"
+    station_id: "0244"
+    aliases: ["용답역", "2호선 용답", "Line 2 용답"]
+  - station_name: "신답"
+    line: "2"
+    station_id: "0245"
+    aliases: ["신답역", "2호선 신답", "Line 2 신답"]
+  - station_name: "신설동"
+    line: "2"
+    station_id: "0246"
+    aliases: ["신설동역", "2호선 신설동", "Line 2 신설동"]
+  - station_name: "도림천"
+    line: "2"
+    station_id: "0247"
+    aliases: ["도림천역", "2호선 도림천", "Line 2 도림천"]
+  - station_name: "양천구청"
+    line: "2"
+    station_id: "0248"
+    aliases: ["양천구청역", "2호선 양천구청", "Line 2 양천구청"]
+  - station_name: "신정네거리"
+    line: "2"
+    station_id: "0249"
+    aliases: ["신정네거리역", "2호선 신정네거리", "Line 2 신정네거리"]
+  - station_name: "용두"
+    line: "2"
+    station_id: "0250"
+    aliases: ["용두역", "2호선 용두", "Line 2 용두"]
+  - station_name: "지축"
+    line: "3"
+    station_id: "0309"
+    aliases: ["지축역", "3호선 지축", "Line 3 지축"]
+  - station_name: "구파발"
+    line: "3"
+    station_id: "0310"
+    aliases: ["구파발역", "3호선 구파발", "Line 3 구파발"]
+  - station_name: "연신내"
+    line: "3"
+    station_id: "0311"
+    aliases: ["연신내역", "3호선 연신내", "Line 3 연신내"]
+  - station_name: "불광"
+    line: "3"
+    station_id: "0312"
+    aliases: ["불광역", "3호선 불광", "Line 3 불광"]
+  - station_name: "녹번"
+    line: "3"
+    station_id: "0313"
+    aliases: ["녹번역", "3호선 녹번", "Line 3 녹번"]
+  - station_name: "홍제"
+    line: "3"
+    station_id: "0314"
+    aliases: ["홍제역", "3호선 홍제", "Line 3 홍제"]
+  - station_name: "무악재"
+    line: "3"
+    station_id: "0315"
+    aliases: ["무악재역", "3호선 무악재", "Line 3 무악재"]
+  - station_name: "독립문"
+    line: "3"
+    station_id: "0316"
+    aliases: ["독립문역", "3호선 독립문", "Line 3 독립문"]
+  - station_name: "경복궁"
+    line: "3"
+    station_id: "0317"
+    aliases: ["경복궁역", "3호선 경복궁", "Line 3 경복궁"]
+  - station_name: "안국"
+    line: "3"
+    station_id: "0318"
+    aliases: ["안국역", "3호선 안국", "Line 3 안국"]
+  - station_name: "종로3가"
+    line: "3"
+    station_id: "0319"
+    aliases: ["종로3가역", "3호선 종로3가", "Line 3 종로3가"]
+  - station_name: "을지로3가"
+    line: "3"
+    station_id: "0320"
+    aliases: ["을지로3가역", "3호선 을지로3가", "Line 3 을지로3가"]
+  - station_name: "충무로"
+    line: "3"
+    station_id: "0321"
+    aliases: ["충무로역", "3호선 충무로", "Line 3 충무로"]
+  - station_name: "동대입구"
+    line: "3"
+    station_id: "0322"
+    aliases: ["동대입구역", "3호선 동대입구", "Line 3 동대입구"]
+  - station_name: "약수"
+    line: "3"
+    station_id: "0323"
+    aliases: ["약수역", "3호선 약수", "Line 3 약수"]
+  - station_name: "금호"
+    line: "3"
+    station_id: "0324"
+    aliases: ["금호역", "3호선 금호", "Line 3 금호"]
+  - station_name: "옥수"
+    line: "3"
+    station_id: "0325"
+    aliases: ["옥수역", "3호선 옥수", "Line 3 옥수"]
+  - station_name: "압구정"
+    line: "3"
+    station_id: "0326"
+    aliases: ["압구정역", "3호선 압구정", "Line 3 압구정"]
+  - station_name: "신사"
+    line: "3"
+    station_id: "0327"
+    aliases: ["신사역", "3호선 신사", "Line 3 신사"]
+  - station_name: "잠원"
+    line: "3"
+    station_id: "0328"
+    aliases: ["잠원역", "3호선 잠원", "Line 3 잠원"]
+  - station_name: "남부터미널"
+    line: "3"
+    station_id: "0331"
+    aliases: ["남부터미널역", "3호선 남부터미널", "Line 3 남부터미널"]
+  - station_name: "양재"
+    line: "3"
+    station_id: "0332"
+    aliases: ["양재역", "3호선 양재", "Line 3 양재"]
+  - station_name: "매봉"
+    line: "3"
+    station_id: "0333"
+    aliases: ["매봉역", "3호선 매봉", "Line 3 매봉"]
+  - station_name: "도곡"
+    line: "3"
+    station_id: "0334"
+    aliases: ["도곡역", "3호선 도곡", "Line 3 도곡"]
+  - station_name: "대치"
+    line: "3"
+    station_id: "0335"
+    aliases: ["대치역", "3호선 대치", "Line 3 대치"]
+  - station_name: "학여울"
+    line: "3"
+    station_id: "0336"
+    aliases: ["학여울역", "3호선 학여울", "Line 3 학여울"]
+  - station_name: "대청"
+    line: "3"
+    station_id: "0337"
+    aliases: ["대청역", "3호선 대청", "Line 3 대청"]
+  - station_name: "일원"
+    line: "3"
+    station_id: "0338"
+    aliases: ["일원역", "3호선 일원", "Line 3 일원"]
+  - station_name: "수서"
+    line: "3"
+    station_id: "0339"
+    aliases: ["수서역", "3호선 수서", "Line 3 수서"]
+  - station_name: "가락시장"
+    line: "3"
+    station_id: "0340"
+    aliases: ["가락시장역", "3호선 가락시장", "Line 3 가락시장"]
+  - station_name: "경찰병원"
+    line: "3"
+    station_id: "0341"
+    aliases: ["경찰병원역", "3호선 경찰병원", "Line 3 경찰병원"]
+  - station_name: "오금"
+    line: "3"
+    station_id: "0342"
+    aliases: ["오금역", "3호선 오금", "Line 3 오금"]
+  - station_name: "불암산"
+    line: "4"
+    station_id: "0409"
+    aliases: ["불암산역", "4호선 불암산", "Line 4 불암산"]
+  - station_name: "상계"
+    line: "4"
+    station_id: "0410"
+    aliases: ["상계역", "4호선 상계", "Line 4 상계"]
+  - station_name: "노원"
+    line: "4"
+    station_id: "0411"
+    aliases: ["노원역", "4호선 노원", "Line 4 노원"]
+  - station_name: "창동"
+    line: "4"
+    station_id: "0412"
+    aliases: ["창동역", "4호선 창동", "Line 4 창동"]
+  - station_name: "쌍문"
+    line: "4"
+    station_id: "0413"
+    aliases: ["쌍문역", "4호선 쌍문", "Line 4 쌍문"]
+  - station_name: "수유"
+    line: "4"
+    station_id: "0414"
+    aliases: ["수유역", "4호선 수유", "Line 4 수유"]
+  - station_name: "미아"
+    line: "4"
+    station_id: "0415"
+    aliases: ["미아역", "4호선 미아", "Line 4 미아"]
+  - station_name: "미아사거리"
+    line: "4"
+    station_id: "0416"
+    aliases: ["미아사거리역", "4호선 미아사거리", "Line 4 미아사거리"]
+  - station_name: "길음"
+    line: "4"
+    station_id: "0417"
+    aliases: ["길음역", "4호선 길음", "Line 4 길음"]
+  - station_name: "성신여대입구"
+    line: "4"
+    station_id: "0418"
+    aliases: ["성신여대입구역", "4호선 성신여대입구", "Line 4 성신여대입구"]
+  - station_name: "한성대입구"
+    line: "4"
+    station_id: "0419"
+    aliases: ["한성대입구역", "4호선 한성대입구", "Line 4 한성대입구"]
+  - station_name: "혜화"
+    line: "4"
+    station_id: "0420"
+    aliases: ["혜화역", "4호선 혜화", "Line 4 혜화"]
+  - station_name: "동대문"
+    line: "4"
+    station_id: "0421"
+    aliases: ["동대문역", "4호선 동대문", "Line 4 동대문"]
+  - station_name: "충무로"
+    line: "4"
+    station_id: "0423"
+    aliases: ["충무로역", "4호선 충무로", "Line 4 충무로"]
+  - station_name: "명동"
+    line: "4"
+    station_id: "0424"
+    aliases: ["명동역", "4호선 명동", "Line 4 명동"]
+  - station_name: "회현"
+    line: "4"
+    station_id: "0425"
+    aliases: ["회현역", "4호선 회현", "Line 4 회현"]
+  - station_name: "숙대입구"
+    line: "4"
+    station_id: "0427"
+    aliases: ["숙대입구역", "4호선 숙대입구", "Line 4 숙대입구"]
+  - station_name: "삼각지"
+    line: "4"
+    station_id: "0428"
+    aliases: ["삼각지역", "4호선 삼각지", "Line 4 삼각지"]
+  - station_name: "신용산"
+    line: "4"
+    station_id: "0429"
+    aliases: ["신용산역", "4호선 신용산", "Line 4 신용산"]
+  - station_name: "이촌"
+    line: "4"
+    station_id: "0430"
+    aliases: ["이촌역", "4호선 이촌", "Line 4 이촌"]
+  - station_name: "동작"
+    line: "4"
+    station_id: "0431"
+    aliases: ["동작역", "4호선 동작", "Line 4 동작"]
+  - station_name: "총신대입구"
+    line: "4"
+    station_id: "0432"
+    aliases: ["총신대입구역", "4호선 총신대입구", "Line 4 총신대입구"]
+  - station_name: "남태령"
+    line: "4"
+    station_id: "0434"
+    aliases: ["남태령역", "4호선 남태령", "Line 4 남태령"]
+  - station_name: "방화"
+    line: "5"
+    station_id: "2511"
+    aliases: ["방화역", "5호선 방화", "Line 5 방화"]
+  - station_name: "개화산"
+    line: "5"
+    station_id: "2512"
+    aliases: ["개화산역", "5호선 개화산", "Line 5 개화산"]
+  - station_name: "김포공항"
+    line: "5"
+    station_id: "2513"
+    aliases: ["김포공항역", "5호선 김포공항", "Line 5 김포공항"]
+  - station_name: "송정"
+    line: "5"
+    station_id: "2514"
+    aliases: ["송정역", "5호선 송정", "Line 5 송정"]
+  - station_name: "마곡"
+    line: "5"
+    station_id: "2515"
+    aliases: ["마곡역", "5호선 마곡", "Line 5 마곡"]
+  - station_name: "발산"
+    line: "5"
+    station_id: "2516"
+    aliases: ["발산역", "5호선 발산", "Line 5 발산"]
+  - station_name: "우장산"
+    line: "5"
+    station_id: "2517"
+    aliases: ["우장산역", "5호선 우장산", "Line 5 우장산"]
+  - station_name: "화곡"
+    line: "5"
+    station_id: "2518"
+    aliases: ["화곡역", "5호선 화곡", "Line 5 화곡"]
+  - station_name: "까치산"
+    line: "5"
+    station_id: "2519"
+    aliases: ["까치산역", "5호선 까치산", "Line 5 까치산"]
+  - station_name: "신정"
+    line: "5"
+    station_id: "2520"
+    aliases: ["신정역", "5호선 신정", "Line 5 신정"]
+  - station_name: "목동"
+    line: "5"
+    station_id: "2521"
+    aliases: ["목동역", "5호선 목동", "Line 5 목동"]
+  - station_name: "오목교"
+    line: "5"
+    station_id: "2522"
+    aliases: ["오목교역", "5호선 오목교", "Line 5 오목교"]
+  - station_name: "양평"
+    line: "5"
+    station_id: "2523"
+    aliases: ["양평역", "5호선 양평", "Line 5 양평"]
+  - station_name: "영등포구청"
+    line: "5"
+    station_id: "2524"
+    aliases: ["영등포구청역", "5호선 영등포구청", "Line 5 영등포구청"]
+  - station_name: "영등포시장"
+    line: "5"
+    station_id: "2525"
+    aliases: ["영등포시장역", "5호선 영등포시장", "Line 5 영등포시장"]
+  - station_name: "신길"
+    line: "5"
+    station_id: "2526"
+    aliases: ["신길역", "5호선 신길", "Line 5 신길"]
+  - station_name: "여의나루"
+    line: "5"
+    station_id: "2528"
+    aliases: ["여의나루역", "5호선 여의나루", "Line 5 여의나루"]
+  - station_name: "마포"
+    line: "5"
+    station_id: "2529"
+    aliases: ["마포역", "5호선 마포", "Line 5 마포"]
+  - station_name: "공덕"
+    line: "5"
+    station_id: "2530"
+    aliases: ["공덕역", "5호선 공덕", "Line 5 공덕"]
+  - station_name: "애오개"
+    line: "5"
+    station_id: "2531"
+    aliases: ["애오개역", "5호선 애오개", "Line 5 애오개"]
+  - station_name: "충정로"
+    line: "5"
+    station_id: "2532"
+    aliases: ["충정로역", "5호선 충정로", "Line 5 충정로"]
+  - station_name: "서대문"
+    line: "5"
+    station_id: "2533"
+    aliases: ["서대문역", "5호선 서대문", "Line 5 서대문"]
+  - station_name: "광화문"
+    line: "5"
+    station_id: "2534"
+    aliases: ["광화문역", "5호선 광화문", "Line 5 광화문"]
+  - station_name: "종로3가"
+    line: "5"
+    station_id: "2535"
+    aliases: ["종로3가역", "5호선 종로3가", "Line 5 종로3가"]
+  - station_name: "을지로4가"
+    line: "5"
+    station_id: "2536"
+    aliases: ["을지로4가역", "5호선 을지로4가", "Line 5 을지로4가"]
+  - station_name: "청구"
+    line: "5"
+    station_id: "2538"
+    aliases: ["청구역", "5호선 청구", "Line 5 청구"]
+  - station_name: "신금호"
+    line: "5"
+    station_id: "2539"
+    aliases: ["신금호역", "5호선 신금호", "Line 5 신금호"]
+  - station_name: "행당"
+    line: "5"
+    station_id: "2540"
+    aliases: ["행당역", "5호선 행당", "Line 5 행당"]
+  - station_name: "마장"
+    line: "5"
+    station_id: "2542"
+    aliases: ["마장역", "5호선 마장", "Line 5 마장"]
+  - station_name: "답십리"
+    line: "5"
+    station_id: "2543"
+    aliases: ["답십리역", "5호선 답십리", "Line 5 답십리"]
+  - station_name: "장한평"
+    line: "5"
+    station_id: "2544"
+    aliases: ["장한평역", "5호선 장한평", "Line 5 장한평"]
+  - station_name: "군자"
+    line: "5"
+    station_id: "2545"
+    aliases: ["군자역", "5호선 군자", "Line 5 군자"]
+  - station_name: "아차산"
+    line: "5"
+    station_id: "2546"
+    aliases: ["아차산역", "5호선 아차산", "Line 5 아차산"]
+  - station_name: "광나루"
+    line: "5"
+    station_id: "2547"
+    aliases: ["광나루역", "5호선 광나루", "Line 5 광나루"]
+  - station_name: "천호"
+    line: "5"
+    station_id: "2548"
+    aliases: ["천호역", "5호선 천호", "Line 5 천호"]
+  - station_name: "강동"
+    line: "5"
+    station_id: "2549"
+    aliases: ["강동역", "5호선 강동", "Line 5 강동"]
+  - station_name: "길동"
+    line: "5"
+    station_id: "2550"
+    aliases: ["길동역", "5호선 길동", "Line 5 길동"]
+  - station_name: "굽은다리"
+    line: "5"
+    station_id: "2551"
+    aliases: ["굽은다리역", "5호선 굽은다리", "Line 5 굽은다리"]
+  - station_name: "명일"
+    line: "5"
+    station_id: "2552"
+    aliases: ["명일역", "5호선 명일", "Line 5 명일"]
+  - station_name: "고덕"
+    line: "5"
+    station_id: "2553"
+    aliases: ["고덕역", "5호선 고덕", "Line 5 고덕"]
+  - station_name: "상일동"
+    line: "5"
+    station_id: "2554"
+    aliases: ["상일동역", "5호선 상일동", "Line 5 상일동"]
+  - station_name: "둔촌동"
+    line: "5"
+    station_id: "2555"
+    aliases: ["둔촌동역", "5호선 둔촌동", "Line 5 둔촌동"]
+  - station_name: "올림픽공원"
+    line: "5"
+    station_id: "2556"
+    aliases: ["올림픽공원역", "5호선 올림픽공원", "Line 5 올림픽공원"]
+  - station_name: "방이"
+    line: "5"
+    station_id: "2557"
+    aliases: ["방이역", "5호선 방이", "Line 5 방이"]
+  - station_name: "오금"
+    line: "5"
+    station_id: "2558"
+    aliases: ["오금역", "5호선 오금", "Line 5 오금"]
+  - station_name: "개롱"
+    line: "5"
+    station_id: "2559"
+    aliases: ["개롱역", "5호선 개롱", "Line 5 개롱"]
+  - station_name: "거여"
+    line: "5"
+    station_id: "2560"
+    aliases: ["거여역", "5호선 거여", "Line 5 거여"]
+  - station_name: "마천"
+    line: "5"
+    station_id: "2561"
+    aliases: ["마천역", "5호선 마천", "Line 5 마천"]
+  - station_name: "강일"
+    line: "5"
+    station_id: "2562"
+    aliases: ["강일역", "5호선 강일", "Line 5 강일"]
+  - station_name: "미사"
+    line: "5"
+    station_id: "2563"
+    aliases: ["미사역", "5호선 미사", "Line 5 미사"]
+  - station_name: "하남풍산"
+    line: "5"
+    station_id: "2564"
+    aliases: ["하남풍산역", "5호선 하남풍산", "Line 5 하남풍산"]
+  - station_name: "하남시청"
+    line: "5"
+    station_id: "2565"
+    aliases: ["하남시청역", "5호선 하남시청", "Line 5 하남시청"]
+  - station_name: "하남검단산"
+    line: "5"
+    station_id: "2566"
+    aliases: ["하남검단산역", "5호선 하남검단산", "Line 5 하남검단산"]
+  - station_name: "응암"
+    line: "6"
+    station_id: "2611"
+    aliases: ["응암역", "6호선 응암", "Line 6 응암"]
+  - station_name: "역촌"
+    line: "6"
+    station_id: "2612"
+    aliases: ["역촌역", "6호선 역촌", "Line 6 역촌"]
+  - station_name: "불광"
+    line: "6"
+    station_id: "2613"
+    aliases: ["불광역", "6호선 불광", "Line 6 불광"]
+  - station_name: "독바위"
+    line: "6"
+    station_id: "2614"
+    aliases: ["독바위역", "6호선 독바위", "Line 6 독바위"]
+  - station_name: "연신내"
+    line: "6"
+    station_id: "2615"
+    aliases: ["연신내역", "6호선 연신내", "Line 6 연신내"]
+  - station_name: "구산"
+    line: "6"
+    station_id: "2616"
+    aliases: ["구산역", "6호선 구산", "Line 6 구산"]
+  - station_name: "새절"
+    line: "6"
+    station_id: "2617"
+    aliases: ["새절역", "6호선 새절", "Line 6 새절"]
+  - station_name: "증산"
+    line: "6"
+    station_id: "2618"
+    aliases: ["증산역", "6호선 증산", "Line 6 증산"]
+  - station_name: "디지털미디어시티"
+    line: "6"
+    station_id: "2619"
+    aliases: ["디지털미디어시티역", "6호선 디지털미디어시티", "Line 6 디지털미디어시티"]
+  - station_name: "월드컵경기장"
+    line: "6"
+    station_id: "2620"
+    aliases: ["월드컵경기장역", "6호선 월드컵경기장", "Line 6 월드컵경기장"]
+  - station_name: "마포구청"
+    line: "6"
+    station_id: "2621"
+    aliases: ["마포구청역", "6호선 마포구청", "Line 6 마포구청"]
+  - station_name: "망원"
+    line: "6"
+    station_id: "2622"
+    aliases: ["망원역", "6호선 망원", "Line 6 망원"]
+  - station_name: "상수"
+    line: "6"
+    station_id: "2624"
+    aliases: ["상수역", "6호선 상수", "Line 6 상수"]
+  - station_name: "광흥창"
+    line: "6"
+    station_id: "2625"
+    aliases: ["광흥창역", "6호선 광흥창", "Line 6 광흥창"]
+  - station_name: "대흥"
+    line: "6"
+    station_id: "2626"
+    aliases: ["대흥역", "6호선 대흥", "Line 6 대흥"]
+  - station_name: "공덕"
+    line: "6"
+    station_id: "2627"
+    aliases: ["공덕역", "6호선 공덕", "Line 6 공덕"]
+  - station_name: "효창공원앞"
+    line: "6"
+    station_id: "2628"
+    aliases: ["효창공원앞역", "6호선 효창공원앞", "Line 6 효창공원앞"]
+  - station_name: "삼각지"
+    line: "6"
+    station_id: "2629"
+    aliases: ["삼각지역", "6호선 삼각지", "Line 6 삼각지"]
+  - station_name: "녹사평"
+    line: "6"
+    station_id: "2630"
+    aliases: ["녹사평역", "6호선 녹사평", "Line 6 녹사평"]
+  - station_name: "이태원"
+    line: "6"
+    station_id: "2631"
+    aliases: ["이태원역", "6호선 이태원", "Line 6 이태원"]
+  - station_name: "한강진"
+    line: "6"
+    station_id: "2632"
+    aliases: ["한강진역", "6호선 한강진", "Line 6 한강진"]
+  - station_name: "버티고개"
+    line: "6"
+    station_id: "2633"
+    aliases: ["버티고개역", "6호선 버티고개", "Line 6 버티고개"]
+  - station_name: "약수"
+    line: "6"
+    station_id: "2634"
+    aliases: ["약수역", "6호선 약수", "Line 6 약수"]
+  - station_name: "청구"
+    line: "6"
+    station_id: "2635"
+    aliases: ["청구역", "6호선 청구", "Line 6 청구"]
+  - station_name: "신당"
+    line: "6"
+    station_id: "2636"
+    aliases: ["신당역", "6호선 신당", "Line 6 신당"]
+  - station_name: "동묘앞"
+    line: "6"
+    station_id: "2637"
+    aliases: ["동묘앞역", "6호선 동묘앞", "Line 6 동묘앞"]
+  - station_name: "창신"
+    line: "6"
+    station_id: "2638"
+    aliases: ["창신역", "6호선 창신", "Line 6 창신"]
+  - station_name: "보문"
+    line: "6"
+    station_id: "2639"
+    aliases: ["보문역", "6호선 보문", "Line 6 보문"]
+  - station_name: "안암"
+    line: "6"
+    station_id: "2640"
+    aliases: ["안암역", "6호선 안암", "Line 6 안암"]
+  - station_name: "고려대"
+    line: "6"
+    station_id: "2641"
+    aliases: ["고려대역", "6호선 고려대", "Line 6 고려대"]
+  - station_name: "월곡"
+    line: "6"
+    station_id: "2642"
+    aliases: ["월곡역", "6호선 월곡", "Line 6 월곡"]
+  - station_name: "상월곡"
+    line: "6"
+    station_id: "2643"
+    aliases: ["상월곡역", "6호선 상월곡", "Line 6 상월곡"]
+  - station_name: "돌곶이"
+    line: "6"
+    station_id: "2644"
+    aliases: ["돌곶이역", "6호선 돌곶이", "Line 6 돌곶이"]
+  - station_name: "석계"
+    line: "6"
+    station_id: "2645"
+    aliases: ["석계역", "6호선 석계", "Line 6 석계"]
+  - station_name: "태릉입구"
+    line: "6"
+    station_id: "2646"
+    aliases: ["태릉입구역", "6호선 태릉입구", "Line 6 태릉입구"]
+  - station_name: "화랑대"
+    line: "6"
+    station_id: "2647"
+    aliases: ["화랑대역", "6호선 화랑대", "Line 6 화랑대"]
+  - station_name: "봉화산"
+    line: "6"
+    station_id: "2648"
+    aliases: ["봉화산역", "6호선 봉화산", "Line 6 봉화산"]
+  - station_name: "신내"
+    line: "6"
+    station_id: "2649"
+    aliases: ["신내역", "6호선 신내", "Line 6 신내"]
+  - station_name: "장암"
+    line: "7"
+    station_id: "2711"
+    aliases: ["장암역", "7호선 장암", "Line 7 장암"]
+  - station_name: "도봉산"
+    line: "7"
+    station_id: "2712"
+    aliases: ["도봉산역", "7호선 도봉산", "Line 7 도봉산"]
+  - station_name: "수락산"
+    line: "7"
+    station_id: "2713"
+    aliases: ["수락산역", "7호선 수락산", "Line 7 수락산"]
+  - station_name: "마들"
+    line: "7"
+    station_id: "2714"
+    aliases: ["마들역", "7호선 마들", "Line 7 마들"]
+  - station_name: "노원"
+    line: "7"
+    station_id: "2715"
+    aliases: ["노원역", "7호선 노원", "Line 7 노원"]
+  - station_name: "중계"
+    line: "7"
+    station_id: "2716"
+    aliases: ["중계역", "7호선 중계", "Line 7 중계"]
+  - station_name: "하계"
+    line: "7"
+    station_id: "2717"
+    aliases: ["하계역", "7호선 하계", "Line 7 하계"]
+  - station_name: "공릉"
+    line: "7"
+    station_id: "2718"
+    aliases: ["공릉역", "7호선 공릉", "Line 7 공릉"]
+  - station_name: "태릉입구"
+    line: "7"
+    station_id: "2719"
+    aliases: ["태릉입구역", "7호선 태릉입구", "Line 7 태릉입구"]
+  - station_name: "먹골"
+    line: "7"
+    station_id: "2720"
+    aliases: ["먹골역", "7호선 먹골", "Line 7 먹골"]
+  - station_name: "중화"
+    line: "7"
+    station_id: "2721"
+    aliases: ["중화역", "7호선 중화", "Line 7 중화"]
+  - station_name: "상봉"
+    line: "7"
+    station_id: "2722"
+    aliases: ["상봉역", "7호선 상봉", "Line 7 상봉"]
+  - station_name: "면목"
+    line: "7"
+    station_id: "2723"
+    aliases: ["면목역", "7호선 면목", "Line 7 면목"]
+  - station_name: "사가정"
+    line: "7"
+    station_id: "2724"
+    aliases: ["사가정역", "7호선 사가정", "Line 7 사가정"]
+  - station_name: "용마산"
+    line: "7"
+    station_id: "2725"
+    aliases: ["용마산역", "7호선 용마산", "Line 7 용마산"]
+  - station_name: "중곡"
+    line: "7"
+    station_id: "2726"
+    aliases: ["중곡역", "7호선 중곡", "Line 7 중곡"]
+  - station_name: "군자"
+    line: "7"
+    station_id: "2727"
+    aliases: ["군자역", "7호선 군자", "Line 7 군자"]
+  - station_name: "어린이대공원"
+    line: "7"
+    station_id: "2728"
+    aliases: ["어린이대공원역", "7호선 어린이대공원", "Line 7 어린이대공원"]
+  - station_name: "자양"
+    line: "7"
+    station_id: "2730"
+    aliases: ["자양역", "7호선 자양", "Line 7 자양"]
+  - station_name: "청담"
+    line: "7"
+    station_id: "2731"
+    aliases: ["청담역", "7호선 청담", "Line 7 청담"]
+  - station_name: "강남구청"
+    line: "7"
+    station_id: "2732"
+    aliases: ["강남구청역", "7호선 강남구청", "Line 7 강남구청"]
+  - station_name: "학동"
+    line: "7"
+    station_id: "2733"
+    aliases: ["학동역", "7호선 학동", "Line 7 학동"]
+  - station_name: "논현"
+    line: "7"
+    station_id: "2734"
+    aliases: ["논현역", "7호선 논현", "Line 7 논현"]
+  - station_name: "반포"
+    line: "7"
+    station_id: "2735"
+    aliases: ["반포역", "7호선 반포", "Line 7 반포"]
+  - station_name: "내방"
+    line: "7"
+    station_id: "2737"
+    aliases: ["내방역", "7호선 내방", "Line 7 내방"]
+  - station_name: "이수"
+    line: "7"
+    station_id: "2738"
+    aliases: ["이수역", "7호선 이수", "Line 7 이수"]
+  - station_name: "남성"
+    line: "7"
+    station_id: "2739"
+    aliases: ["남성역", "7호선 남성", "Line 7 남성"]
+  - station_name: "숭실대입구"
+    line: "7"
+    station_id: "2740"
+    aliases: ["숭실대입구역", "7호선 숭실대입구", "Line 7 숭실대입구"]
+  - station_name: "상도"
+    line: "7"
+    station_id: "2741"
+    aliases: ["상도역", "7호선 상도", "Line 7 상도"]
+  - station_name: "장승배기"
+    line: "7"
+    station_id: "2742"
+    aliases: ["장승배기역", "7호선 장승배기", "Line 7 장승배기"]
+  - station_name: "신대방삼거리"
+    line: "7"
+    station_id: "2743"
+    aliases: ["신대방삼거리역", "7호선 신대방삼거리", "Line 7 신대방삼거리"]
+  - station_name: "보라매"
+    line: "7"
+    station_id: "2744"
+    aliases: ["보라매역", "7호선 보라매", "Line 7 보라매"]
+  - station_name: "신풍"
+    line: "7"
+    station_id: "2745"
+    aliases: ["신풍역", "7호선 신풍", "Line 7 신풍"]
+  - station_name: "대림"
+    line: "7"
+    station_id: "2746"
+    aliases: ["대림역", "7호선 대림", "Line 7 대림"]
+  - station_name: "남구로"
+    line: "7"
+    station_id: "2747"
+    aliases: ["남구로역", "7호선 남구로", "Line 7 남구로"]
+  - station_name: "가산디지털단지"
+    line: "7"
+    station_id: "2748"
+    aliases: ["가산디지털단지역", "7호선 가산디지털단지", "Line 7 가산디지털단지"]
+  - station_name: "철산"
+    line: "7"
+    station_id: "2749"
+    aliases: ["철산역", "7호선 철산", "Line 7 철산"]
+  - station_name: "광명사거리"
+    line: "7"
+    station_id: "2750"
+    aliases: ["광명사거리역", "7호선 광명사거리", "Line 7 광명사거리"]
+  - station_name: "천왕"
+    line: "7"
+    station_id: "2751"
+    aliases: ["천왕역", "7호선 천왕", "Line 7 천왕"]
+  - station_name: "온수"
+    line: "7"
+    station_id: "2752"
+    aliases: ["온수역", "7호선 온수", "Line 7 온수"]
+  - station_name: "별내"
+    line: "8"
+    station_id: "2805"
+    aliases: ["별내역", "8호선 별내", "Line 8 별내"]
+  - station_name: "다산"
+    line: "8"
+    station_id: "2806"
+    aliases: ["다산역", "8호선 다산", "Line 8 다산"]
+  - station_name: "동구릉"
+    line: "8"
+    station_id: "2807"
+    aliases: ["동구릉역", "8호선 동구릉", "Line 8 동구릉"]
+  - station_name: "구리"
+    line: "8"
+    station_id: "2808"
+    aliases: ["구리역", "8호선 구리", "Line 8 구리"]
+  - station_name: "장자호수공원"
+    line: "8"
+    station_id: "2809"
+    aliases: ["장자호수공원역", "8호선 장자호수공원", "Line 8 장자호수공원"]
+  - station_name: "암사역사공원"
+    line: "8"
+    station_id: "2810"
+    aliases: ["암사역사공원역", "8호선 암사역사공원", "Line 8 암사역사공원"]
+  - station_name: "암사"
+    line: "8"
+    station_id: "2811"
+    aliases: ["암사역", "8호선 암사", "Line 8 암사"]
+  - station_name: "천호"
+    line: "8"
+    station_id: "2812"
+    aliases: ["천호역", "8호선 천호", "Line 8 천호"]
+  - station_name: "강동구청"
+    line: "8"
+    station_id: "2813"
+    aliases: ["강동구청역", "8호선 강동구청", "Line 8 강동구청"]
+  - station_name: "몽촌토성"
+    line: "8"
+    station_id: "2814"
+    aliases: ["몽촌토성역", "8호선 몽촌토성", "Line 8 몽촌토성"]
+  - station_name: "석촌"
+    line: "8"
+    station_id: "2816"
+    aliases: ["석촌역", "8호선 석촌", "Line 8 석촌"]
+  - station_name: "송파"
+    line: "8"
+    station_id: "2817"
+    aliases: ["송파역", "8호선 송파", "Line 8 송파"]
+  - station_name: "가락시장"
+    line: "8"
+    station_id: "2818"
+    aliases: ["가락시장역", "8호선 가락시장", "Line 8 가락시장"]
+  - station_name: "문정"
+    line: "8"
+    station_id: "2819"
+    aliases: ["문정역", "8호선 문정", "Line 8 문정"]
+  - station_name: "장지"
+    line: "8"
+    station_id: "2820"
+    aliases: ["장지역", "8호선 장지", "Line 8 장지"]
+  - station_name: "복정"
+    line: "8"
+    station_id: "2821"
+    aliases: ["복정역", "8호선 복정", "Line 8 복정"]
+  - station_name: "산성"
+    line: "8"
+    station_id: "2822"
+    aliases: ["산성역", "8호선 산성", "Line 8 산성"]
+  - station_name: "남한산성입구"
+    line: "8"
+    station_id: "2823"
+    aliases: ["남한산성입구역", "8호선 남한산성입구", "Line 8 남한산성입구"]
+  - station_name: "단대오거리"
+    line: "8"
+    station_id: "2824"
+    aliases: ["단대오거리역", "8호선 단대오거리", "Line 8 단대오거리"]
+  - station_name: "신흥"
+    line: "8"
+    station_id: "2825"
+    aliases: ["신흥역", "8호선 신흥", "Line 8 신흥"]
+  - station_name: "수진"
+    line: "8"
+    station_id: "2826"
+    aliases: ["수진역", "8호선 수진", "Line 8 수진"]
+  - station_name: "모란"
+    line: "8"
+    station_id: "2827"
+    aliases: ["모란역", "8호선 모란", "Line 8 모란"]
+  - station_name: "남위례"
+    line: "8"
+    station_id: "2828"
+    aliases: ["남위례역", "8호선 남위례", "Line 8 남위례"]
