@@ -1,5 +1,14 @@
 version: 1
 
+station_support_contract:
+  # A station/line is fully supported only when it is registered, has a
+  # verified shortest-route API code, and all sources below cover its operator.
+  required_sources:
+    - facility_info
+    - elevator_status
+    - elevator_info
+    - restroom
+
 operators:
   seoul_metro:
     display_name: "서울교통공사"

@@ -13,6 +13,12 @@ from app.services.station_context import StationLookupContext
 
 DATA_DIR = Path(__file__).resolve().parents[1] / "data"
 DEFAULT_COVERAGE_PATH = DATA_DIR / "source_coverage.yaml"
+DEFAULT_STATION_SUPPORT_SOURCES = (
+    "facility_info",
+    "elevator_status",
+    "elevator_info",
+    "restroom",
+)
 
 
 @dataclass(frozen=True)
@@ -75,6 +81,16 @@ def evaluate_source_coverage(
         status=SourceCoverageStatus.UNSUPPORTED,
         note=f"{station_label}은 {coverage_label}의 제공 범위 밖입니다.",
     )
+
+
+def station_support_required_sources() -> tuple[str, ...]:
+    registry = _load_coverage_registry()
+    contract = registry.get("station_support_contract", {})
+    configured = contract.get("required_sources", [])
+    sources = tuple(
+        source_name for source_name in configured if isinstance(source_name, str) and source_name
+    )
+    return sources or DEFAULT_STATION_SUPPORT_SOURCES
 
 
 @lru_cache(maxsize=1)
