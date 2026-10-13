@@ -112,6 +112,42 @@ def test_duplicate_reference_id_is_emitted_once() -> None:
     assert items[0].facility_id == "EL-4"
 
 
+def test_elevator_evidence_order_is_stable_across_api_input_order() -> None:
+    facilities = [
+        _facility(
+            facility_id="EL-3",
+            name="3번 엘리베이터",
+            location="서울역 방면8-3",
+            status=FacilityStatus.AVAILABLE,
+            source="elevator_status",
+        ),
+        _facility(
+            facility_id="EL-1",
+            name="1번 엘리베이터",
+            location="1,2번 출입구 사이",
+            status=FacilityStatus.AVAILABLE,
+            source="elevator_status",
+        ),
+        _facility(
+            facility_id="EL-2",
+            name="2번 엘리베이터",
+            location="종각 방면3-2",
+            status=FacilityStatus.AVAILABLE,
+            source="elevator_status",
+        ),
+    ]
+
+    forward = build_elevator_evidence_items(facilities)
+    reversed_items = build_elevator_evidence_items(list(reversed(facilities)))
+
+    assert forward == reversed_items
+    assert [item.location for item in forward] == [
+        "1,2번 출입구 사이",
+        "서울역 방면8-3",
+        "종각 방면3-2",
+    ]
+
+
 def _facility(
     *,
     facility_id: str | None,

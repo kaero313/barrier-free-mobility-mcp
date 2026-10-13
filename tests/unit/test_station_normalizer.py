@@ -71,6 +71,35 @@ def test_station_normalizer_rejects_exact_station_on_wrong_line(
     assert expected_line in (result.clarification_message or "")
 
 
+@pytest.mark.parametrize(
+    ("query", "expected_message"),
+    [
+        (
+            "고속터미널",
+            "고속터미널역은 3호선, 7호선, 9호선이 있습니다. 어느 호선 기준으로 확인할까요?",
+        ),
+        ("서울역", "서울역은 1호선, 4호선이 있습니다. 어느 호선 기준으로 확인할까요?"),
+    ],
+)
+def test_station_normalizer_names_lines_for_ambiguous_station(
+    query: str,
+    expected_message: str,
+) -> None:
+    result = StationNormalizer().resolve(query)
+
+    assert result.needs_clarification is True
+    assert result.clarification_message == expected_message
+
+
+def test_station_normalizer_line_mismatch_does_not_repeat_station_suffix() -> None:
+    result = StationNormalizer().resolve("9호선 서울역")
+
+    assert result.clarification_message == (
+        "서울역은 현재 역 데이터에서 1호선, 4호선으로 확인됩니다. "
+        "입력한 9호선이 맞는지 다시 확인해 주세요."
+    )
+
+
 def test_line_nine_registry_covers_all_stations_and_operator_segments() -> None:
     normalizer = StationNormalizer()
     line_nine = [station for station in normalizer.stations if station.line == "9"]
@@ -80,3 +109,12 @@ def test_line_nine_registry_covers_all_stations_and_operator_segments() -> None:
         "seoul_metro_line9"
     )
     assert normalizer.resolve("9호선 봉은사").matched_station.operator == "seoul_metro"
+
+
+def test_station_outside_the_registry_explains_the_coverage() -> None:
+    result = StationNormalizer().resolve("판교")
+
+    assert result.needs_clarification is True
+    assert result.clarification_message == (
+        "판교역을 찾지 못했습니다. 현재는 서울교통공사 1~8호선과 9호선 역만 찾을 수 있습니다."
+    )

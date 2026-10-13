@@ -149,7 +149,11 @@ def _extract_station_mentions(question: str) -> list[StationMention]:
         start = compact_question.find(compact_term)
         while start >= 0:
             end = start + len(compact_term)
-            line = _line_from_term_or_context(term, compact_question[:start])
+            line = _line_from_term_or_context(
+                term,
+                compact_question[:start],
+                compact_question[end:],
+            )
             candidates.append(
                 StationMention(
                     start=start,
@@ -243,14 +247,22 @@ def _candidate_query(candidate: PlaceStationCandidate) -> str:
     )
 
 
-def _line_from_term_or_context(term: str, compact_prefix: str) -> str | None:
+def _line_from_term_or_context(
+    term: str,
+    compact_prefix: str,
+    compact_suffix: str,
+) -> str | None:
     term_line = _extract_line(term)
     if term_line:
         return term_line
     match = re.search(r"(?:(?:line)(\d+)|(\d+)호선)$", compact_prefix, re.IGNORECASE)
-    if not match:
-        return None
-    return normalize_line_name(match.group(1) or match.group(2))
+    if match:
+        return normalize_line_name(match.group(1) or match.group(2))
+    # "시청역 2호선"처럼 역 이름 바로 뒤에 붙은 호선도 그 역의 호선으로 본다.
+    match = re.match(r"역?(\d+)호선", compact_suffix)
+    if match:
+        return normalize_line_name(match.group(1))
+    return None
 
 
 def _extract_line(value: str) -> str | None:

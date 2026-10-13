@@ -12,6 +12,12 @@ from app.schemas.accessibility import (
 from app.schemas.facility import AccessibleFacility, FacilityStatus, FacilityType
 
 OPERATIONAL_SOURCES = {None, "elevator_status"}
+_STATUS_SORT_ORDER = {
+    FacilityStatus.UNAVAILABLE: 0,
+    FacilityStatus.MAINTENANCE: 1,
+    FacilityStatus.UNKNOWN: 2,
+    FacilityStatus.AVAILABLE: 3,
+}
 
 
 def build_elevator_evidence_items(
@@ -99,7 +105,7 @@ def build_elevator_evidence_items(
             )
         )
 
-    return _dedupe_evidence_items(items)
+    return sorted(_dedupe_evidence_items(items), key=_evidence_item_sort_key)
 
 
 def _match_reference(
@@ -206,6 +212,19 @@ def _dedupe_evidence_items(
         seen.add(key)
         deduped.append(item)
     return deduped
+
+
+def _evidence_item_sort_key(item: ElevatorEvidenceItem) -> tuple[object, ...]:
+    return (
+        0 if item.status_source_name else 1,
+        _STATUS_SORT_ORDER[item.status],
+        _normalize_exact(item.location),
+        _normalize_exact(item.operation_section),
+        _normalize_exact(item.facility_name),
+        _normalize_exact(item.facility_id),
+        _normalize_exact(item.status_source_name),
+        _normalize_exact(item.location_source_name),
+    )
 
 
 def _normalize_exact(value: object) -> str:

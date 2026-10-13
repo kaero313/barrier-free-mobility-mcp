@@ -219,3 +219,10 @@ def test_parser_keeps_longer_place_context_for_overlapping_station_alias() -> No
     assert parsed.parsed.destination == "잠실"
     assert parsed.parsed.station_mentions == ["서울역", "잠실"]
     assert [mention.place_name for mention in parsed.parsed.place_mentions] == ["서울역 KTX"]
+
+
+def test_line_written_after_the_station_name_belongs_to_that_station() -> None:
+    parsed = parse_accessibility_question("시청역 2호선 엘리베이터 운행해?").parsed
+
+    assert parsed.target_station == "시청"
+    assert parsed.target_line == "2"

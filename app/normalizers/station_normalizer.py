@@ -109,7 +109,7 @@ class StationNormalizer:
                     for station in exact_candidates
                 ],
                 needs_clarification=True,
-                clarification_message="호선 또는 역명을 더 구체적으로 입력하세요.",
+                clarification_message=_ambiguous_line_message(exact_candidates),
             )
 
         matches = process.extract(cleaned, self._choices.keys(), limit=3, score_cutoff=65)
@@ -133,7 +133,7 @@ class StationNormalizer:
             needs_clarification=matched is None,
             clarification_message=None
             if matched
-            else "일치하는 역을 확정하지 못했습니다. 역명과 호선을 함께 입력하세요.",
+            else _not_found_message(LINE_PATTERN.sub("", query).strip(), candidates),
         )
 
 
@@ -144,13 +144,39 @@ def resolve_station(query: str) -> StationResolutionResult:
     return DEFAULT_STATION_NORMALIZER.resolve(query)
 
 
+def _ambiguous_line_message(candidates: list[Station]) -> str:
+    station = _station_label(candidates[0].station_name)
+    line_text = _line_text(candidates)
+    if len({candidate.line for candidate in candidates if candidate.line}) < 2:
+        return f"{station}을 확정하지 못했습니다. 호선을 함께 입력하세요."
+    return f"{station}은 {line_text}이 있습니다. 어느 호선 기준으로 확인할까요?"
+
+
+def _not_found_message(name: str, candidates: list[Station]) -> str:
+    if candidates:
+        return "입력한 이름과 정확히 맞는 역이 없습니다. 비슷한 역 중 맞는 역을 골라 주세요."
+    # 후보가 하나도 없으면 다시 입력해도 찾을 수 없으니 찾을 수 있는 범위를 알려 준다.
+    station = _station_label(name) if name else "입력한 역"
+    return (
+        f"{station}을 찾지 못했습니다. 현재는 서울교통공사 1~8호선과 9호선 역만 찾을 수 있습니다."
+    )
+
+
 def _line_mismatch_message(*, requested_line: str, candidates: list[Station]) -> str:
-    station_name = candidates[0].station_name
-    available_lines = sorted({candidate.line for candidate in candidates if candidate.line})
-    if available_lines:
-        line_text = ", ".join(f"{line}호선" for line in available_lines)
+    station = _station_label(candidates[0].station_name)
+    line_text = _line_text(candidates)
+    if line_text:
         return (
-            f"{station_name}역은 현재 역 데이터에서 {line_text}으로 확인됩니다. "
+            f"{station}은 현재 역 데이터에서 {line_text}으로 확인됩니다. "
             f"입력한 {requested_line}호선이 맞는지 다시 확인해 주세요."
         )
-    return f"{station_name}역의 호선을 확정하지 못했습니다. 호선을 다시 확인해 주세요."
+    return f"{station}의 호선을 확정하지 못했습니다. 호선을 다시 확인해 주세요."
+
+
+def _line_text(candidates: list[Station]) -> str:
+    lines = sorted({candidate.line for candidate in candidates if candidate.line})
+    return ", ".join(f"{line}호선" for line in lines)
+
+
+def _station_label(station_name: str) -> str:
+    return station_name if station_name.endswith("역") else f"{station_name}역"
