@@ -19,6 +19,7 @@ from scripts.generate_usability_review import (
     write_review_outputs,
 )
 from scripts.summarize_usability_feedback import (
+    build_case_review_trend,
     format_summary,
     summarize_feedback_documents,
     validation_error_locations,
@@ -208,8 +209,8 @@ async def test_mock_review_case_runs_without_live_api() -> None:
 
     assert len(entries) == 1
     assert entries[0].status == "SUCCESS"
-    assert entries[0].user_message.startswith("**출발 전에 확인이 필요합니다.**")
-    assert "**지금 할 일:**" in entries[0].user_message
+    assert entries[0].user_message.startswith("**휠체어 이동 동선을 추가로 확인하세요.**")
+    assert "**권장 확인:**" in entries[0].user_message
     assert len(entries[0].response_sha256) == 64
 
 
@@ -328,8 +329,62 @@ def test_feedback_summary_aggregates_scores_flags_and_response_versions() -> Non
     assert summary["below_target_counts"]["accessibility_relevance"] == 1
     assert summary["flag_counts"]["unclear_facility_location"] == 2
     assert summary["cases"][0]["response_variants"] == 2
+    trend = summary["cases"][0]["trend"]
+    assert trend["response_changed"] is True
+    assert trend["first_average_score"] == 4.2
+    assert trend["latest_average_score"] == 3.8
+    assert trend["average_score_delta"] == -0.4
+    assert trend["repeated_below_target_dimensions"] == []
+    assert trend["repeated_flags"] == {"unclear_facility_location": 2}
+    assert trend["needs_follow_up"] is True
     assert "민감할 수 있는 자유 의견" not in str(summary)
     assert "사용성 피드백 요약" in formatted
+    assert "수정 전후 평균: 4.2 -> 3.8" in formatted
+    assert "반복된 문제 표시: unclear_facility_location(2회)" in formatted
+
+
+def test_case_review_trend_marks_only_repeated_low_scores() -> None:
+    first = _completed_document(
+        fingerprint="a" * 64,
+        ratings={
+            "understandability": 4,
+            "actionability": 2,
+            "uncertainty_clarity": 4,
+            "accessibility_relevance": 2,
+            "brevity": 4,
+        },
+    ).cases[0]
+    latest = _completed_document(
+        fingerprint="b" * 64,
+        ratings={
+            "understandability": 2,
+            "actionability": 2,
+            "uncertainty_clarity": 4,
+            "accessibility_relevance": 3,
+            "brevity": 4,
+        },
+    ).cases[0]
+
+    trend = build_case_review_trend([first, latest])
+
+    assert trend is not None
+    assert trend["repeated_below_target_dimensions"] == [
+        "actionability",
+        "accessibility_relevance",
+    ]
+    assert trend["dimension_trends"]["understandability"] == {
+        "first": 4,
+        "latest": 2,
+        "delta": -2,
+        "below_target_count": 1,
+    }
+    assert trend["needs_follow_up"] is True
+
+
+def test_case_review_trend_requires_at_least_two_rounds() -> None:
+    review = _completed_document().cases[0]
+
+    assert build_case_review_trend([review]) is None
 
 
 def test_summary_cli_accepts_completed_feedback_without_printing_comments(

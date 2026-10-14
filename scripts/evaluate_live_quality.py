@@ -24,30 +24,15 @@ from app.services.accessibility_service import AccessibilityService  # noqa: E40
 
 CASE_FILE = PROJECT_ROOT / "tests" / "fixtures" / "user_question_cases.yaml"
 TECHNICAL_TERMS = ("risk_level", "confidence_level", "cache", "payload")
+# 시설 답변은 굵은 첫 줄이 곧 답이라 "확인 결과:" 머리말이나 역·호선 구역을 두지 않는다.
 FACILITY_REQUIRED_SECTIONS = [
-    "확인 결과:",
-    "역·호선",
     "시설 정보",
     "기준 시각",
     "주의사항",
 ]
-STATION_ALTERNATIVE_REQUIRED_SECTIONS = [
-    "확인 결과:",
-    "역·호선",
-    "현재 시설 상태",
-    "대체 가능한 시설",
-    "기준 시각",
-    "한계·주의사항",
-]
-ROUTE_ALTERNATIVE_REQUIRED_SECTIONS = [
-    "판단:",
-    "대안 요청 조건",
-    "추천 대안",
-    "접근성 근거",
-    "다른 후보",
-    "기준 시각",
-    "주의사항",
-]
+# 역 시설 대안은 시설 답변과 같은 표를 쓰고, 경로 대안은 경로 답변에 "다른 경로"만 더한다.
+STATION_ALTERNATIVE_REQUIRED_SECTIONS = FACILITY_REQUIRED_SECTIONS
+ROUTE_ALTERNATIVE_REQUIRED_SECTIONS = ["다른 경로", "기준 시각", "주의사항"]
 
 
 @dataclass(frozen=True)
@@ -182,13 +167,13 @@ def summarize_response(
     ) and not response.clarification_needed
     if is_station_alternative:
         quality_sections = STATION_ALTERNATIVE_REQUIRED_SECTIONS
-        required_lead = "확인 결과:"
+        required_lead = None
     elif is_alternative:
         quality_sections = ROUTE_ALTERNATIVE_REQUIRED_SECTIONS
-        required_lead = "판단:"
+        required_lead = None
     elif is_facility:
         quality_sections = FACILITY_REQUIRED_SECTIONS
-        required_lead = "확인 결과:"
+        required_lead = None
     else:
         quality_sections = required_sections
         required_lead = None
@@ -284,11 +269,14 @@ def extract_judgement(response: AccessibilityQuestionResult) -> str:
             first_line = normalized
         if normalized.startswith(("판단:", "확인 결과:")):
             return normalized.split(":", 1)[1].strip().strip("*").strip()
-    if "한 가지만 더 알려주세요" in first_line:
+    if response.clarification_needed or "한 가지만 더 알려주세요" in first_line:
         return "추가 정보 필요"
+    if response.facility_result is not None:
+        # 시설 답변의 첫 줄은 "○○역 엘리베이터는 모두 운행 중입니다."처럼 답 자체다.
+        return first_line
     if "이용 여부를 판단할 수 없습니다" in first_line:
         return "확인 불가"
-    if "이용을 권장하지 않습니다" in first_line:
+    if "이용을 권장하지 않습니다" in first_line or "권장할 수 없습니다" in first_line:
         return "권장하지 않음"
     if "출발 전에 확인이 필요합니다" in first_line:
         return "주의 필요"

@@ -68,7 +68,7 @@ def complete_user_message() -> str:
         [
             "**현재 확인된 범위에서는 이용할 수 있습니다.**",
             "엘리베이터 점검 또는 이용 제한은 확인되지 않았습니다.",
-            "**지금 할 일:** 출발 직전에 운행 상태를 확인하세요.",
+            "**권장 확인:** 출발 직전에 운행 상태를 확인하세요.",
             "",
             "### 역별 확인 결과",
             "| 역 | 확인된 정보 | 추가 확인 |",
@@ -177,10 +177,7 @@ def test_quality_check_reports_missing_sections_banned_terms_and_technical_terms
 def test_summarize_facility_response_uses_facility_contract() -> None:
     message = "\n".join(
         [
-            "**확인 결과: 정보 확인**",
-            "",
-            "### 역·호선",
-            "- 2호선 강남역",
+            "**2호선 강남역 엘리베이터는 모두 운행 중입니다.**",
             "",
             "### 시설 정보",
             "| 시설 | 위치 | 상태 |",
@@ -188,7 +185,7 @@ def test_summarize_facility_response_uses_facility_contract() -> None:
             "| 엘리베이터 | 1번 출구 | 이용 가능 |",
             "",
             "### 기준 시각",
-            "- 전체 조회 시각: 2026년 7월 10일 12:00.",
+            "- 조회 시각: 2026년 7월 10일 12:00.",
             "",
             "### 주의사항",
             "> 출발 직전에 재확인하세요.",
@@ -223,7 +220,7 @@ def test_summarize_facility_response_uses_facility_contract() -> None:
     )
 
     assert summary.risk_level == "N/A"
-    assert summary.judgement == "정보 확인"
+    assert summary.judgement == "2호선 강남역 엘리베이터는 모두 운행 중입니다."
     assert summary.has_checked_at_section is True
     assert summary.has_notice_section is True
     assert summary.issues == []
@@ -232,22 +229,19 @@ def test_summarize_facility_response_uses_facility_contract() -> None:
 def test_summarize_station_alternative_uses_alternative_contract() -> None:
     message = "\n".join(
         [
-            "확인 결과: 대체 시설 확인",
+            "**2호선 강남역 엘리베이터 중 점검 중인 곳이 있지만, 운행 중인 다른 엘리베이터가 "
+            "있습니다.**",
             "",
-            "역·호선",
-            "- 2호선 강남역",
+            "### 시설 정보",
+            "| 시설 | 위치 | 상태 |",
+            "|---|---|---|",
+            "| 엘리베이터 | 3번 출구 | 이용 가능 |",
             "",
-            "현재 시설 상태",
-            "- 요청한 엘리베이터는 점검 중입니다.",
+            "### 기준 시각",
+            "- 조회 시각: 2026년 7월 10일 12:00.",
             "",
-            "대체 가능한 시설",
-            "- 3번 출구 방향 엘리베이터: 이용 가능.",
-            "",
-            "기준 시각",
-            "- 전체 조회 시각: 2026년 7월 10일 12:00.",
-            "",
-            "한계·주의사항",
-            "- 승강기 상태는 출발 직전에 다시 확인하세요.",
+            "### 주의사항",
+            "> 승강기 상태는 출발 직전에 다시 확인하세요.",
         ]
     )
     facility_result = FacilityQuestionResult(
@@ -282,7 +276,9 @@ def test_summarize_station_alternative_uses_alternative_contract() -> None:
     )
 
     assert summary.status == "SUCCESS"
-    assert summary.judgement == "대체 시설 확인"
+    assert summary.judgement == (
+        "2호선 강남역 엘리베이터 중 점검 중인 곳이 있지만, 운행 중인 다른 엘리베이터가 있습니다."
+    )
     assert summary.has_checked_at_section is True
     assert summary.has_notice_section is True
     assert summary.issues == []
