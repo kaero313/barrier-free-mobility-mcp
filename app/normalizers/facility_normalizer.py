@@ -15,19 +15,25 @@ from app.normalizers.status_normalizer import normalize_status
 from app.schemas.facility import AccessibleFacility, FacilityType
 
 TRAILING_LINE_PATTERN = re.compile(r"\((\d{1,2})\)\s*$")
+# 공공데이터 시설명에 "에스컬레터" 같은 오타가 있어 "에스컬"과 "E/S" 표기로도 에스컬레이터를 가린다.
+# 놓치면 "승강기)" 머리말 때문에 엘리베이터로 잘못 분류된다.
+ESCALATOR_CODE_PATTERN = re.compile(r"(?<![a-z])e/s(?![a-z])")
 
 
 def normalize_facility_type(value: object) -> FacilityType:
     text = str(value or "").strip().lower().replace(" ", "").replace("_", "")
     if text in {"wl", "wheelchairlift"} or "휠체어리프트" in text:
         return FacilityType.WHEELCHAIR_LIFT
-    if text in {"es", "e/s", "esc", "escalator"} or "에스컬레이터" in text:
+    if text in {"es", "e/s", "esc", "escalator"} or "에스컬" in text:
         return FacilityType.ESCALATOR
     if text in {"ev", "e/v", "el", "e/l", "elv", "elevator"} or "엘리베이터" in text:
         return FacilityType.ELEVATOR
     if ("장애인" in text or "교통약자" in text) and "화장실" in text:
         return FacilityType.ACCESSIBLE_RESTROOM
     if "승강기" in text:
+        # "엘리베이터"라는 말 없이 "E/S 13호기"처럼 적힌 승강기는 에스컬레이터다.
+        if ESCALATOR_CODE_PATTERN.search(text):
+            return FacilityType.ESCALATOR
         return FacilityType.ELEVATOR
     if "화장실" in text:
         return FacilityType.RESTROOM

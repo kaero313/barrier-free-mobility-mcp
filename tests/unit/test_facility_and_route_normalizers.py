@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from app.normalizers.facility_normalizer import normalize_facilities
+from app.normalizers.facility_normalizer import normalize_facilities, normalize_facility_type
 from app.normalizers.helpers import rows_from_raw
 from app.normalizers.route_normalizer import normalize_route_candidates
 from app.schemas.facility import FacilityStatus, FacilityType
@@ -239,3 +239,48 @@ def test_elevator_status_infers_line_for_transfer_station_filtering() -> None:
     assert len(facilities) == 1
     assert facilities[0].line == "3"
     assert facilities[0].location_description == "3호선 승강장"
+
+
+def test_shortest_route_summary_reads_zero_transfers_naturally() -> None:
+    def document(transfers: int) -> dict[str, object]:
+        return {
+            "document": {
+                "body": {
+                    "paths": {
+                        "path": [
+                            {
+                                "dptreStn": {"stnNm": "홍대입구", "lineNm": "2호선"},
+                                "arvlStn": {"stnNm": "삼성", "lineNm": "2호선"},
+                                "trsitYn": "N",
+                                "reqHr": 1800,
+                            }
+                        ]
+                    },
+                    "trsitNmtm": transfers,
+                    "totalReqHr": 1800,
+                }
+            }
+        }
+
+    direct = normalize_route_candidates(document(0), origin="홍대입구", destination="삼성")
+    one_transfer = normalize_route_candidates(document(1), origin="홍대입구", destination="삼성")
+
+    assert direct[0].raw_summary == "홍대입구에서 삼성까지 환승 없는 경로"
+    assert one_transfer[0].raw_summary == "홍대입구에서 삼성까지 1회 환승 경로"
+
+
+def test_misspelled_escalator_names_are_not_counted_as_elevators() -> None:
+    # 공공데이터 시설명의 "에스컬레터" 오타와 "E/S" 표기도 에스컬레이터다.
+    assert (
+        normalize_facility_type("승강기)에스컬레터-사당(2) E/S 1200형 13호기")
+        == FacilityType.ESCALATOR
+    )
+    assert normalize_facility_type("승강기)사당(2) E/S 1200형 14호기") == FacilityType.ESCALATOR
+    # 엘리베이터라고 적힌 이름은 위치 설명에 E/S가 섞여도 엘리베이터로 남는다.
+    assert (
+        normalize_facility_type("승강기)엘리베이터-사당 E/S 11호기 옆 내부#1")
+        == FacilityType.ELEVATOR
+    )
+    assert (
+        normalize_facility_type("승강기)엘리베이터-삼성 1번 출구측 외부#1") == FacilityType.ELEVATOR
+    )

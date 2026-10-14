@@ -124,3 +124,32 @@ def split_station_path(value: Any) -> list[str]:
 
 def _looks_like_row(value: Mapping[str, Any]) -> bool:
     return bool(value) and any(not isinstance(item, dict | list) for item in value.values())
+
+
+def transfer_text(count: int) -> str:
+    """Describe a transfer count the way a rider reads it ("0회 환승" reads as an error)."""
+    return "환승 없는" if count <= 0 else f"{count}회 환승"
+
+
+# "방면5-1,남영 방면6-4"처럼 쉼표 뒤가 붙은 원자료만 띄운다.
+# "1,12번"처럼 숫자 사이 쉼표는 그대로 둔다.
+_TIGHT_COMMA = re.compile(r"(?<=\D),(?=\S)|,(?=[^\s\d])")
+
+
+def tidy_location_text(value: str) -> str:
+    return _TIGHT_COMMA.sub(", ", value)
+
+
+# "합정 방면7-2"처럼 열차 방면과 칸·문 번호로 적힌 위치는 승강장 안의 시설이다.
+_PLATFORM_POSITION = re.compile(r"방면\s*\d+-\d+")
+
+
+def is_platform_position(location: str | None) -> bool:
+    return _PLATFORM_POSITION.search(location or "") is not None
+
+
+def label_platform_position(location: str) -> str:
+    # 방면·칸 번호만으로는 승강장 시설인지 알아보기 어렵다.
+    if is_platform_position(location) and "승강장" not in location:
+        return f"승강장 {location}"
+    return location

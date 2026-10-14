@@ -2,7 +2,14 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.normalizers.helpers import as_int, as_str, pick, rows_from_raw, split_station_path
+from app.normalizers.helpers import (
+    as_int,
+    as_str,
+    pick,
+    rows_from_raw,
+    split_station_path,
+    transfer_text,
+)
 from app.schemas.route import RouteCandidate, RouteSegment
 
 
@@ -185,7 +192,7 @@ def _normalize_shortest_route_document(
         stations=stations,
         raw_summary=(
             f"{route_origin}에서 {route_destination}까지 "
-            f"{as_int(body.get('trsitNmtm')) or 0}회 환승 경로"
+            f"{transfer_text(as_int(body.get('trsitNmtm')) or 0)} 경로"
         ),
     )
 
