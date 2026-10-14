@@ -35,6 +35,13 @@ DEFAULT_SAFETY_NOTICE = (
     "엘리베이터 운행 상태는 바뀔 수 있으니 출발 직전 재확인하세요."
 )
 
+# 연결된 편의시설 공공데이터에는 휠체어 충전기가 없다. 충전기가 필요하다고 하면 확인하지 못했다고
+# 밝힌다.
+CHARGER_SOURCE_UNSUPPORTED_NOTE = "휠체어 충전기 정보는 현재 연결된 공공데이터 제공 범위 밖입니다."
+
+# 역별 판단 메모. 답변 문구가 이 메모로 장애인화장실 정보가 제공 범위 밖인 역을 가려낸다.
+RESTROOM_SOURCE_UNSUPPORTED_NOTE = "장애인화장실 정보는 현재 연결된 공공데이터 제공 범위 밖입니다."
+
 
 class AccessibleRestroomRequirement(StrEnum):
     ANY_ROUTE_STATION = "any_route_station"

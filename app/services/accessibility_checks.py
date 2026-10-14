@@ -12,6 +12,7 @@ from app.engine.restroom_policy import (
 from app.normalizers.facility_identity import facility_record_identity
 from app.normalizers.helpers import normalize_line_name, normalize_station_name
 from app.schemas.accessibility import (
+    RESTROOM_SOURCE_UNSUPPORTED_NOTE,
     AccessibilityCheck,
     AccessibilityEvidenceStatus,
     FacilityAnswerState,
@@ -125,9 +126,7 @@ def build_accessibility_checks(
             station_name,
             {"restroom"},
         ):
-            notes.append(
-                "장애인화장실 정보는 현재 연결된 공공데이터 제공 범위 밖입니다."
-            )
+            notes.append(RESTROOM_SOURCE_UNSUPPORTED_NOTE)
         if role == "transfer":
             notes.append("환승역입니다. 엘리베이터 환승 동선을 확인하세요.")
 
