@@ -44,6 +44,19 @@ strict_cases:
     expected_last_station: "동대문역사문화공원"
     required_stations: ["사당", "동대문역사문화공원"]
 
+  # 2026-08-01: 3호선 고속터미널 코드가 수서 코드(0339)로 잘못 등록됐던 회귀를 검출한다.
+  - name: express_terminal_to_gyodae_line3_direct
+    origin: "고속터미널"
+    origin_line: "3"
+    destination: "교대"
+    destination_line: "3"
+    expected_transfer_count: 0
+    expected_lines: ["3"]
+    expected_first_station: "고속터미널"
+    expected_last_station: "교대"
+    required_stations: ["고속터미널", "교대"]
+    forbidden_transfer_stations: ["수서"]
+
 smoke_cases:
   - name: konkuk_to_express_terminal_observe
     origin: "건대입구"

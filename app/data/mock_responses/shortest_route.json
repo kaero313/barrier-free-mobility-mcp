@@ -127,6 +127,25 @@
       "estimated_minutes": 23,
       "distance_meters": 11800,
       "raw_summary": "7호선 건대입구에서 고속터미널까지 환승 없이 이동"
+    },
+    {
+      "route_id": "mock-express-terminal-gyodae-line3",
+      "origin": "고속터미널",
+      "destination": "교대",
+      "stations": ["고속터미널", "교대"],
+      "segments": [
+        {
+          "from_station": "고속터미널",
+          "to_station": "교대",
+          "line": "3",
+          "transfer": false,
+          "estimated_minutes": 2
+        }
+      ],
+      "transfer_count": 0,
+      "estimated_minutes": 2,
+      "distance_meters": 1150,
+      "raw_summary": "3호선 고속터미널에서 교대까지 환승 없이 이동"
     }
   ]
 }
