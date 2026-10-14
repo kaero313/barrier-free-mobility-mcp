@@ -23,6 +23,12 @@ SOURCE_DISPLAY_NAMES = {
 
 CRITICAL_SOURCES = {"shortest_route", "elevator_status"}
 CORE_EVIDENCE_SOURCES = {"shortest_route", "facility_info", "elevator_status"}
+# 판단 근거 설명은 사용자에게 그대로 보이므로 데이터셋 이름 대신 쉬운 말로 쓴다.
+CORE_SOURCE_LABELS = {
+    "shortest_route": "경로",
+    "elevator_status": "엘리베이터",
+    "facility_info": "편의시설",
+}
 
 
 def build_evidence_context(
@@ -75,6 +81,7 @@ def _build_evidence_sources(
         for source in data_sources
     ]
 
+    evidence = _dedupe_repeated_reads(evidence)
     represented = {(source.source_name, source.success) for source in evidence}
     for failed in failed_sources:
         if (failed.source_name, False) in represented:
@@ -93,6 +100,18 @@ def _build_evidence_sources(
             )
         )
     return evidence
+
+
+def _dedupe_repeated_reads(evidence: list[EvidenceSource]) -> list[EvidenceSource]:
+    seen: set[tuple[str, bool, datetime | None]] = set()
+    deduped: list[EvidenceSource] = []
+    for source in evidence:
+        identity = (source.source_name, source.success, source.checked_at)
+        if source.checked_at is not None and identity in seen:
+            continue
+        seen.add(identity)
+        deduped.append(source)
+    return deduped
 
 
 def _build_unverified_parts(
@@ -119,10 +138,8 @@ def _build_unverified_parts(
             parts.append(f"{display_name} 응답을 신뢰 가능한 성공 응답으로 확인하지 못했습니다.")
         if source.cache_status == CacheStatus.STALE:
             parts.append(f"{display_name}는 오래된 캐시 응답입니다.")
-        elif source.cache_status == CacheStatus.HIT:
-            parts.append(f"{display_name}는 캐시 응답을 사용했습니다.")
         if source.source_type == "fixture":
-            parts.append(f"{display_name}는 mock fixture 데이터입니다.")
+            parts.append(f"{display_name}는 실제 공공데이터가 아닌 예시 데이터입니다.")
 
     for limitation in limitations:
         if "확인" in limitation or "실패" in limitation or "캐시" in limitation:
@@ -141,11 +158,7 @@ def _calculate_confidence(
 ) -> tuple[ConfidenceLevel, list[str]]:
     successful_sources = {source.source_name for source in data_sources if source.success}
     failed_names = {source.source_name for source in failed_sources}
-    cache_or_fixture_used = any(
-        source.source_type in {"cache", "fixture"}
-        or source.cache_status in {CacheStatus.HIT, CacheStatus.STALE}
-        for source in data_sources
-    )
+    fixture_used = any(source.source_type == "fixture" for source in data_sources)
     stale_used = any(source.cache_status == CacheStatus.STALE for source in data_sources)
     missing_core = sorted(CORE_EVIDENCE_SOURCES - successful_sources - failed_names)
     critical_failure = bool(CRITICAL_SOURCES.intersection(failed_names))
@@ -155,26 +168,42 @@ def _calculate_confidence(
     if status == ResponseStatus.FAILED:
         return "LOW", ["경로 접근성 판단이 실패했습니다."]
     if risk_level == "UNKNOWN":
-        return "LOW", ["위험 수준이 UNKNOWN이라 현재 데이터만으로 확정하기 어렵습니다."]
+        return "LOW", ["위험 수준을 판단할 근거가 부족해 현재 자료만으로 확정하기 어렵습니다."]
     if critical_failure:
         return "LOW", ["최단경로 또는 엘리베이터 상태 같은 핵심 출처 확인에 실패했습니다."]
     if missing_core:
-        return "LOW", [
-            "핵심 출처가 일부 확인되지 않았습니다: " + ", ".join(
-                display_name_for_source(source) for source in missing_core
+        # 제공 범위 밖인 출처는 조회 실패가 아니므로 확인하지 못한 출처와 나눠 말한다.
+        unsupported = {
+            source.source_name
+            for source in data_sources
+            if source.coverage_status == SourceCoverageStatus.UNSUPPORTED
+        }
+        out_of_coverage = [source for source in missing_core if source in unsupported]
+        unchecked = [source for source in missing_core if source not in unsupported]
+        reasons: list[str] = []
+        if out_of_coverage:
+            reasons.append(
+                f"경로 역의 {_core_labels(out_of_coverage)} 정보가 "
+                "현재 공공데이터 제공 범위 밖입니다."
             )
-        ]
+        if unchecked:
+            reasons.append(f"{_core_labels(unchecked)} 정보를 확인하지 못했습니다.")
+        return "LOW", reasons
 
     if failed_sources:
-        return "MEDIUM", ["일부 비핵심 출처 확인에 실패했습니다."]
+        return "MEDIUM", ["경로·엘리베이터·편의시설 외 일부 보조 자료를 확인하지 못했습니다."]
     if stale_used:
-        return "MEDIUM", ["일부 출처가 오래된 캐시 응답입니다."]
-    if cache_or_fixture_used:
-        return "MEDIUM", ["일부 출처가 캐시 또는 mock fixture 데이터입니다."]
+        return "MEDIUM", ["일부 자료는 최신 조회에 실패해 이전에 받은 응답을 사용했습니다."]
+    if fixture_used:
+        return "MEDIUM", ["일부 자료가 실제 공공데이터가 아닌 예시 데이터입니다."]
     if unverified_parts:
         return "MEDIUM", ["확인하지 못한 세부 정보가 일부 있습니다."]
 
-    return "HIGH", ["핵심 출처가 최신 public API 응답으로 확인되었습니다."]
+    return "HIGH", ["경로·엘리베이터·편의시설 정보를 모두 최근 공공데이터로 확인했습니다."]
+
+
+def _core_labels(source_names: list[str]) -> str:
+    return "·".join(CORE_SOURCE_LABELS.get(name, name) for name in source_names)
 
 
 def _note_for_data_source(source: DataSourceMeta) -> str:

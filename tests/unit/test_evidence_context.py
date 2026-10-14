@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import datetime
+
 from app.core.time import utc_now
 from app.schemas.accessibility import AccessibilityResult, EvidenceSource, MobilityProfile
 from app.schemas.common import CacheStatus, DataSourceMeta, FailedSource, ResponseStatus
@@ -78,11 +80,12 @@ def test_critical_failure_or_unknown_risk_produces_low_confidence() -> None:
     )
 
     assert context["confidence_level"] == "LOW"
-    assert any("UNKNOWN" in reason for reason in context["confidence_reasons"])
+    assert any("근거가 부족" in reason for reason in context["confidence_reasons"])
+    assert not any("UNKNOWN" in reason for reason in context["confidence_reasons"])
     assert any("승강기_가동현황 확인 실패" in part for part in context["unverified_parts"])
 
 
-def test_fixture_or_cache_sources_produce_medium_confidence() -> None:
+def test_fixture_or_stale_cache_sources_produce_medium_confidence() -> None:
     fixture_context = build_evidence_context(
         status=ResponseStatus.SUCCESS,
         risk_level="LOW",
@@ -94,12 +97,12 @@ def test_fixture_or_cache_sources_produce_medium_confidence() -> None:
         failed_sources=[],
         limitations=[],
     )
-    cache_context = build_evidence_context(
+    stale_context = build_evidence_context(
         status=ResponseStatus.SUCCESS,
         risk_level="LOW",
         data_sources=[
             _source("shortest_route", "public_api"),
-            _source("facility_info", "public_api", cache_status=CacheStatus.HIT),
+            _source("facility_info", "cache", cache_status=CacheStatus.STALE),
             _source("elevator_status", "public_api"),
         ],
         failed_sources=[],
@@ -107,9 +110,48 @@ def test_fixture_or_cache_sources_produce_medium_confidence() -> None:
     )
 
     assert fixture_context["confidence_level"] == "MEDIUM"
-    assert cache_context["confidence_level"] == "MEDIUM"
-    assert any("mock fixture" in part for part in fixture_context["unverified_parts"])
-    assert any("캐시 응답" in part for part in cache_context["unverified_parts"])
+    assert stale_context["confidence_level"] == "MEDIUM"
+    assert any("예시 데이터" in part for part in fixture_context["unverified_parts"])
+    assert any("오래된 캐시" in part for part in stale_context["unverified_parts"])
+    for context in (fixture_context, stale_context):
+        user_facing = [*context["unverified_parts"], *context["confidence_reasons"]]
+        assert not any("mock" in text or "fixture" in text for text in user_facing)
+
+
+def test_fresh_cache_hit_is_confirmed_evidence_not_an_unverified_part() -> None:
+    fetched_at = utc_now()
+    context = build_evidence_context(
+        status=ResponseStatus.SUCCESS,
+        risk_level="LOW",
+        data_sources=[
+            _source("shortest_route", "public_api"),
+            _source("facility_info", "public_api", fetched_at=fetched_at),
+            _source("elevator_status", "public_api", fetched_at=fetched_at),
+            # The same request reads both sources again from the TTL cache.
+            _source(
+                "facility_info",
+                "cache",
+                cache_status=CacheStatus.HIT,
+                fetched_at=fetched_at,
+            ),
+            _source(
+                "elevator_status",
+                "cache",
+                cache_status=CacheStatus.HIT,
+                fetched_at=fetched_at,
+            ),
+        ],
+        failed_sources=[],
+        limitations=[],
+    )
+
+    assert context["confidence_level"] == "HIGH"
+    assert context["unverified_parts"] == []
+    assert [source.source_name for source in context["evidence_sources"]] == [
+        "shortest_route",
+        "facility_info",
+        "elevator_status",
+    ]
 
 
 def test_source_display_names_are_safe_and_user_facing() -> None:
@@ -126,12 +168,36 @@ def _source(
     success: bool = True,
     cache_status: CacheStatus = CacheStatus.MISS,
     error_message: str | None = None,
+    fetched_at: datetime | None = None,
 ) -> DataSourceMeta:
     return DataSourceMeta(
         source_name=source_name,
         source_type=source_type,
-        fetched_at=utc_now(),
+        fetched_at=fetched_at or utc_now(),
         cache_status=cache_status,
         success=success,
         error_message=error_message,
     )
+
+
+def test_out_of_coverage_core_sources_are_explained_in_plain_words() -> None:
+    from app.schemas.common import SourceCoverageStatus
+
+    unsupported = {"success": False, "coverage_status": SourceCoverageStatus.UNSUPPORTED}
+    context = build_evidence_context(
+        status=ResponseStatus.PARTIAL,
+        risk_level="HIGH",
+        data_sources=[
+            _source("shortest_route", "public_api"),
+            _source("facility_info", "public_api").model_copy(update=unsupported),
+            _source("elevator_status", "public_api").model_copy(update=unsupported),
+        ],
+        failed_sources=[],
+        limitations=[],
+    )
+
+    assert context["confidence_level"] == "LOW"
+    # 제공 범위 밖은 조회 실패가 아니고, 데이터셋 이름 대신 쉬운 말로 알린다.
+    assert context["confidence_reasons"] == [
+        "경로 역의 엘리베이터·편의시설 정보가 현재 공공데이터 제공 범위 밖입니다."
+    ]

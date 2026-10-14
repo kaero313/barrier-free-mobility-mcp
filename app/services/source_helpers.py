@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Awaitable, Callable
-from typing import Any
+from typing import Any, Literal
 from weakref import WeakKeyDictionary
 
 from app.cache.base import CacheProtocol
@@ -29,11 +29,15 @@ async def fetch_normalized_with_cache[T](
     normalize: Callable[[dict[str, Any]], T],
     failure_limitation: str,
 ) -> ServiceResult[T]:
+    hit_source_type: Literal["cache", "fixture"] = (
+        "fixture" if settings.app_mode == AppMode.MOCK else "cache"
+    )
     cached = await cache.get(cache_key)
     if cached is not None:
         return _cache_hit_result(
             cached,
             source_name=source_name,
+            source_type=hit_source_type,
         )
 
     async with _cache_key_lock(cache, cache_key):
@@ -42,6 +46,7 @@ async def fetch_normalized_with_cache[T](
             return _cache_hit_result(
                 cached,
                 source_name=source_name,
+                source_type=hit_source_type,
             )
 
         try:
@@ -119,14 +124,19 @@ def _cache_key_lock(cache: CacheProtocol, cache_key: str) -> asyncio.Lock:
     return locks.setdefault(cache_key, asyncio.Lock())
 
 
-def _cache_hit_result[T](cached: Any, *, source_name: str) -> ServiceResult[T]:
+def _cache_hit_result[T](
+    cached: Any,
+    *,
+    source_name: str,
+    source_type: Literal["cache", "fixture"],
+) -> ServiceResult[T]:
     metrics_registry.record_cache_event(CacheStatus.HIT)
     return ServiceResult(
         value=cached.value,
         data_sources=[
             DataSourceMeta(
                 source_name=source_name,
-                source_type="cache",
+                source_type=source_type,
                 fetched_at=cached.fetched_at,
                 cache_status=CacheStatus.HIT,
                 staleness_seconds=cached.staleness_seconds,
