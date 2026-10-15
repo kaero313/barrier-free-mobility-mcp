@@ -17,7 +17,10 @@ from app.schemas.common import (
 )
 from app.schemas.facility import AccessibleFacility, FacilityStatus, FacilityType
 from app.services.evidence import display_name_for_source
-from app.services.facility_message import build_facility_user_message
+from app.services.facility_message import (
+    build_facility_user_message,
+    facility_safety_notice,
+)
 from app.services.types import ServiceResult
 
 
@@ -61,6 +64,7 @@ def build_facility_question_result(
         failed_sources=failed_sources,
         limitations=limitations,
         unverified_parts=_unverified_parts(items, data_sources, failed_sources),
+        safety_notice=facility_safety_notice(list(service_results)),
     )
     return result.model_copy(update={"user_message": build_facility_user_message(result)})
 
