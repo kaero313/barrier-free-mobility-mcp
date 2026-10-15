@@ -52,6 +52,7 @@ async def answer_accessibility_question(
             intent=parsed_question.intent,
             parsed=parsed,
             reason=clarification_reason,
+            station_service=station_service,
         )
 
     if parsed_question.intent == "facility_status":

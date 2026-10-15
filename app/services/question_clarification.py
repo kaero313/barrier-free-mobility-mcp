@@ -15,6 +15,11 @@ from app.services.station_context import (
 )
 from app.services.station_service import StationService
 
+SERVICE_SCOPE_TEXT = (
+    "이 서비스는 지하철 경로의 접근성과 역 엘리베이터·장애인화장실 정보를 확인합니다."
+)
+STATION_COVERAGE_TEXT = "현재는 서울교통공사 1~8호선과 9호선 역만 찾을 수 있습니다."
+
 
 def question_clarification_reason(
     *,
@@ -39,6 +44,8 @@ def question_clarification_reason(
         parsed.destination,
     )
     if origin_context.needs_clarification or destination_context.needs_clarification:
+        if _has_unverified_station(origin_context, destination_context):
+            return "station_not_in_coverage"
         return _station_context_clarification_reason(
             origin_context,
             destination_context,
@@ -52,8 +59,13 @@ def build_question_clarification_result(
     intent: QuestionIntent,
     parsed: ParsedAccessibilityQuestion,
     reason: str,
+    station_service: StationService,
 ) -> AccessibilityQuestionResult:
-    questions = _question_clarification_questions(reason, parsed)[:1]
+    questions = _question_clarification_questions(
+        reason,
+        parsed,
+        station_question=_station_clarification_question(reason, parsed, station_service),
+    )[:1]
     available_partial_info = _question_available_partial_info(reason, parsed)
     return AccessibilityQuestionResult(
         question=question,
@@ -69,7 +81,6 @@ def build_question_clarification_result(
             reason=reason,
             parsed=parsed,
             questions=questions,
-            available_partial_info=available_partial_info,
         ),
         clarification_needed=True,
         questions=questions,
@@ -119,6 +130,8 @@ def _facility_clarification_reason(
         explicit_line=parsed.target_line,
     )
     if target_context.needs_clarification:
+        if _has_unverified_station(target_context):
+            return "station_not_in_coverage"
         return _station_context_clarification_reason(target_context)
     return None
 
@@ -137,9 +150,40 @@ def _station_context_clarification_reason(
     return "ambiguous_station"
 
 
+def _station_clarification_question(
+    reason: str,
+    parsed: ParsedAccessibilityQuestion,
+    station_service: StationService,
+) -> str | None:
+    if reason not in {"ambiguous_station", "station_line_mismatch"}:
+        return None
+    if _is_facility_question(parsed):
+        if parsed.target_station is None:
+            return None
+        contexts = [
+            resolve_station_context(
+                station_service,
+                parsed.target_station,
+                explicit_line=parsed.target_line,
+            )
+        ]
+    else:
+        contexts = [
+            resolve_station_context(station_service, station)
+            for station in (parsed.origin, parsed.destination)
+            if station is not None
+        ]
+    for context in contexts:
+        if context.needs_clarification and context.clarification_message:
+            return context.clarification_message
+    return None
+
+
 def _question_clarification_questions(
     reason: str,
     parsed: ParsedAccessibilityQuestion,
+    *,
+    station_question: str | None = None,
 ) -> list[str]:
     place_questions = _place_candidate_questions(parsed)
     if place_questions:
@@ -180,11 +224,15 @@ def _question_clarification_questions(
             "휠체어, 유모차, 보행약자 중 어떤 이동 조건인지 알려 주세요.",
             "계단이나 에스컬레이터를 사용할 수 있는지도 알려 주세요.",
         ]
+    if station_question:
+        return [station_question]
     if reason == "station_line_mismatch":
         return [
             "입력한 역과 호선 조합이 역 데이터와 일치하지 않습니다. "
             "역명 또는 호선을 다시 확인해 주세요."
         ]
+    if reason == "station_not_in_coverage":
+        return ["현재 검증된 역 목록에 있는 역명과 호선을 다시 알려 주세요."]
     if reason == "ambiguous_station":
         if _is_facility_question(parsed):
             return [
@@ -226,13 +274,15 @@ def _question_available_partial_info(
             "현재 질문에서 지원 가능한 접근성 조회 유형을 확정하지 못했습니다."
         )
     if reason == "current_route_context":
-        partial_info.append("MCP 서버는 이전 대화의 경로를 저장하지 않습니다.")
+        partial_info.append("이전 대화의 경로는 이어받지 않습니다.")
     if reason == "missing_alternative_route":
         partial_info.append("출발역과 도착역이 확인되면 경로 후보를 비교할 수 있습니다.")
     if reason == "ambiguous_station":
         partial_info.append("호선이 확정되면 역별 엘리베이터 정보를 확인할 수 있습니다.")
     if reason == "station_line_mismatch":
         partial_info.append("역명과 호선 조합이 확정되면 접근성 정보를 조회할 수 있습니다.")
+    if reason == "station_not_in_coverage":
+        partial_info.append("질문에서 현재 검증된 역·호선 조합을 확인하지 못했습니다.")
     if not partial_info:
         partial_info.append("역명과 이동 조건이 확정되면 접근성 체크를 제공할 수 있습니다.")
     return partial_info
@@ -243,88 +293,57 @@ def _question_clarification_message(
     reason: str,
     parsed: ParsedAccessibilityQuestion,
     questions: list[str],
-    available_partial_info: list[str],
 ) -> str:
-    if _is_facility_question(parsed):
-        return _facility_question_clarification_message(
-            reason=reason,
-            parsed=parsed,
-            questions=questions,
-            available_partial_info=available_partial_info,
-        )
-    reason_text = _question_reason_text(reason, parsed)
-    partial_lines = "\n".join(f"- {info}" for info in available_partial_info)
-    primary_question = questions[0] if questions else "출발역과 도착역을 알려 주세요."
-    return "\n".join(
-        [
-            "**한 가지만 더 알려주세요.**",
-            f"**확인할 내용:** {_ensure_message_sentence(primary_question)}",
-            reason_text,
-            "",
-            "### 확인 결과",
-            partial_lines,
-            "",
-            "### 기준 시각",
-            "- 공공 API 조회 전입니다. 질문 정보가 확정되면 기준 시각을 포함해 다시 안내합니다.",
-            "",
-            "### 주의사항",
-            "> 역명과 이동 조건을 확인한 뒤 다시 조회하는 것을 권장합니다.",
-            "- 엘리베이터와 역사 상태는 바뀔 수 있으니 출발 직전 재확인하세요.",
-        ]
+    # 되묻는 답변은 물을 내용과, 질문만으로 이유가 드러나지 않을 때 그 이유 한 줄만 쓴다.
+    # 아직 아무것도 조회하지 않았으니 확인 결과·기준 시각·주의사항을 붙이지 않는다(답변 계약 5).
+    # 질문에서 알아낸 역·시설은 available_partial_info로 따로 준다.
+    facility = _is_facility_question(parsed)
+    default_question = (
+        "확인할 역과 시설을 알려 주세요." if facility else "출발역과 도착역을 알려 주세요."
     )
+    reason_text = (
+        _facility_reason_text(reason, parsed) if facility else _question_reason_text(reason, parsed)
+    )
+    lines = [_ensure_message_sentence(questions[0] if questions else default_question)]
+    if reason_text:
+        lines.append(reason_text)
+    return "\n".join(lines)
 
 
-def _question_reason_text(reason: str, parsed: ParsedAccessibilityQuestion) -> str:
+def _question_reason_text(reason: str, parsed: ParsedAccessibilityQuestion) -> str | None:
     if parsed.place_mentions:
         return "장소명이 여러 역 후보와 연결되어 어느 역 기준인지 확정하지 못했습니다."
+    if reason == "missing_station" and parsed.station_mentions:
+        # 역 하나는 찾았는데 나머지를 못 찾았다면 대개 역 목록 밖의 역이다.
+        return f"질문의 역 중 일부를 찾지 못했습니다. {STATION_COVERAGE_TEXT}"
     if reason == "unsupported_intent":
-        return "현재 질문에서 지원 가능한 접근성 조회 유형을 확정하지 못했습니다."
+        return SERVICE_SCOPE_TEXT
     if reason == "current_route_context":
-        return "MCP 서버가 이전 대화의 경로를 저장하지 않아 출발역과 도착역을 다시 확인해야 합니다."
-    if reason == "missing_alternative_route":
-        return "대안 경로를 비교할 출발역 또는 도착역이 확인되지 않았습니다."
+        return "이전 대화의 경로는 이어받지 않아 출발역과 도착역을 다시 알려 주셔야 합니다."
     if reason == "missing_mobility_profile":
-        return "이동 조건이 없어 필요한 접근성 기준을 확정하지 못했습니다."
-    if reason == "ambiguous_station":
-        return "호선이 여러 개인 역이 있어 어느 호선 기준인지 확정하지 못했습니다."
-    return "출발역 또는 도착역을 확정하지 못했습니다."
+        return "이동 조건에 따라 확인할 동선이 달라집니다."
+    if reason == "station_not_in_coverage":
+        return STATION_COVERAGE_TEXT
+    return None
 
 
-def _facility_question_clarification_message(
-    *,
-    reason: str,
-    parsed: ParsedAccessibilityQuestion,
-    questions: list[str],
-    available_partial_info: list[str],
-) -> str:
+def _facility_reason_text(reason: str, parsed: ParsedAccessibilityQuestion) -> str | None:
     if reason == "accessible_restroom_confirmation":
-        reason_text = "일반 화장실과 장애인화장실 중 어느 시설인지 확인이 필요합니다."
-    elif reason == "missing_facility_type":
-        reason_text = "확인할 접근성 시설 종류가 지정되지 않았습니다."
-    elif reason == "missing_facility_station":
-        reason_text = "시설을 확인할 지하철역을 찾지 못했습니다."
-    elif reason == "ambiguous_station":
-        reason_text = "환승역은 호선별 시설 위치가 달라 호선 확인이 필요합니다."
-    elif parsed.place_mentions:
-        reason_text = "장소명이 여러 역 후보와 연결되어 어느 역 기준인지 확인이 필요합니다."
-    else:
-        reason_text = "시설 조회에 필요한 정보를 확정하지 못했습니다."
-    partial_lines = [f"- {info}" for info in available_partial_info]
-    primary_question = questions[0] if questions else "확인할 역과 시설을 알려 주세요."
-    return "\n".join(
-        [
-            "**한 가지만 더 알려주세요.**",
-            f"**확인할 내용:** {_ensure_message_sentence(primary_question)}",
-            reason_text,
-            "",
-            "### 현재 확인된 정보",
-            *(partial_lines or ["- 확인된 역 또는 시설 정보 없음."]),
-            "",
-            "### 주의사항",
-            "> 역과 호선이 확정되면 공공데이터 조회 시각과 함께 안내합니다.",
-            "- 엘리베이터와 역사 상태는 바뀔 수 있으니 출발 직전에 재확인하세요.",
-        ]
-    )
+        return "일반 화장실과 장애인화장실 중 어느 시설인지 확인이 필요합니다."
+    if reason == "ambiguous_station":
+        return "환승역은 호선별 시설 위치가 달라 호선 확인이 필요합니다."
+    if parsed.place_mentions:
+        return "장소명이 여러 역 후보와 연결되어 어느 역 기준인지 확인이 필요합니다."
+    if reason == "station_not_in_coverage":
+        return STATION_COVERAGE_TEXT
+    return None
+
+
+def _with_topic(name: str) -> str:
+    # 영문 장소명(DDP, KTX)은 한글로 읽을 때 받침이 없는 경우가 많아 "는"을 붙인다.
+    last = name.strip()[-1:]
+    has_final = "가" <= last <= "힣" and (ord(last) - ord("가")) % 28 != 0
+    return f"{name}{'은' if has_final else '는'}"
 
 
 def _ensure_message_sentence(value: str) -> str:
@@ -340,21 +359,27 @@ def _is_facility_question(parsed: ParsedAccessibilityQuestion) -> bool:
     return parsed.facility_question_kind is not None or bool(parsed.facility_types)
 
 
+def _has_unverified_station(*contexts: StationLookupContext) -> bool:
+    return any(
+        context.needs_clarification and context.station_id is None and not context.candidate_lines
+        for context in contexts
+    )
+
+
 def _place_candidate_questions(parsed: ParsedAccessibilityQuestion) -> list[str]:
     questions: list[str] = []
     for mention in parsed.place_mentions:
         if not mention.candidates:
             continue
         labels = _candidate_labels(mention)
+        place = _with_topic(mention.place_name)
         if len(mention.candidates) == 1:
             questions.append(
-                f"{mention.place_name}은 {labels} 기준으로 확인할 수 있습니다. "
-                "이 역 기준으로 확인하면 될까요?"
+                f"{place} {labels} 기준으로 확인할 수 있습니다. 이 역 기준으로 확인하면 될까요?"
             )
             continue
         questions.append(
-            f"{mention.place_name}은 {labels} 기준으로 확인할 수 있습니다. "
-            "어느 역을 기준으로 확인할까요?"
+            f"{place} {labels} 기준으로 확인할 수 있습니다. 어느 역을 기준으로 확인할까요?"
         )
     return questions
 
