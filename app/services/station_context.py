@@ -11,6 +11,7 @@ LINE_PATTERN = re.compile(
     r"(?:(?:line)\s*(?P<line_after>\d+)|(?P<line_before>\d+)\s*호선)",
     re.IGNORECASE,
 )
+_ROUTE_LINE_MISMATCH_NOTE = re.compile(r"경로 데이터에서 .+으로 연결되어 입력한 .+과 다릅니다\.$")
 
 
 @dataclass(frozen=True)
@@ -20,6 +21,8 @@ class StationLookupContext:
     station_id: str | None = None
     operator: str | None = None
     query: str = ""
+    # 사용자가 호선을 직접 말했는지. 역 이름만으로 정해진 호선은 경로가 다른 호선으로 닿아도 된다.
+    line_explicit: bool = False
     needs_clarification: bool = False
     candidate_lines: tuple[str, ...] = ()
     clarification_message: str | None = None
@@ -53,6 +56,7 @@ def resolve_station_context(
             station_id=matched.station_id,
             operator=matched.operator,
             query=query,
+            line_explicit=line is not None,
             needs_clarification=False,
         )
 
@@ -62,6 +66,7 @@ def resolve_station_context(
         line=line,
         station_id=None,
         query=query,
+        line_explicit=line is not None,
         needs_clarification=resolution.needs_clarification,
         candidate_lines=tuple(
             sorted({candidate.line for candidate in resolution.candidates if candidate.line})
@@ -89,11 +94,16 @@ def build_route_station_contexts(
         key = normalize_station_name(station)
         if not key:
             continue
-        if key == normalize_station_name(origin.station_name):
-            add(origin)
-            continue
-        if key == normalize_station_name(destination.station_name):
-            add(destination)
+        endpoint = next(
+            (
+                context
+                for context in (origin, destination)
+                if key == normalize_station_name(context.station_name)
+            ),
+            None,
+        )
+        if endpoint is not None:
+            add(_route_endpoint_context(station_service, endpoint, route_lines.get(key, set())))
             continue
 
         lines = route_lines.get(key, set())
@@ -108,9 +118,30 @@ def build_route_station_contexts(
             context = resolve_station_context(station_service, station)
         add(context)
 
-    add(origin)
-    add(destination)
+    for endpoint in (origin, destination):
+        key = normalize_station_name(endpoint.station_name)
+        if key and key not in contexts:
+            add(endpoint)
     return contexts
+
+
+def _route_endpoint_context(
+    station_service: StationService,
+    context: StationLookupContext,
+    route_lines: set[str],
+) -> StationLookupContext:
+    # 역 이름만으로 정한 호선과 경로가 닿는 호선이 다르면, 실제로 타고 내리는 호선의 시설을 본다.
+    if context.line_explicit or len(route_lines) != 1 or context.line in route_lines:
+        return context
+    return resolve_station_context(
+        station_service,
+        context.station_name,
+        explicit_line=next(iter(route_lines)),
+    )
+
+
+def is_route_line_mismatch_note(text: str) -> bool:
+    return _ROUTE_LINE_MISMATCH_NOTE.search(text) is not None
 
 
 def route_line_mismatch_limitations(
@@ -120,19 +151,29 @@ def route_line_mismatch_limitations(
     route_lines = _route_station_lines(routes)
     limitations: list[str] = []
     for context in contexts:
-        if context.line is None:
+        # 사용자가 지정하지 않은 호선은 어긋나도 경로를 버리지 않는다.
+        if context.line is None or not context.line_explicit:
             continue
         key = normalize_station_name(context.station_name)
         if not key:
             continue
         lines = route_lines.get(key, set())
         if lines and context.line not in lines:
-            route_line_text = ", ".join(f"{line}호선" for line in sorted(lines))
+            route_line_text = ", ".join(_line_label(line) for line in sorted(lines))
+            station = (
+                context.station_name
+                if context.station_name.endswith("역")
+                else f"{context.station_name}역"
+            )
             limitations.append(
-                f"{context.station_name} 입력 호선({context.line}호선)과 "
-                f"경로 API 호선({route_line_text})이 다릅니다."
+                f"{station}은 경로 데이터에서 {route_line_text}으로 연결되어 "
+                f"입력한 {_line_label(context.line)}과 다릅니다."
             )
     return limitations
+
+
+def _line_label(line: str) -> str:
+    return f"{line}호선" if line.isdigit() else line
 
 
 def _extract_line(query: str) -> str | None:

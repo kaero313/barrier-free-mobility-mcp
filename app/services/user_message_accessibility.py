@@ -1,6 +1,12 @@
 from __future__ import annotations
 
+from app.normalizers.helpers import (
+    is_platform_position,
+    label_platform_position,
+    tidy_location_text,
+)
 from app.schemas.accessibility import (
+    RESTROOM_SOURCE_UNSUPPORTED_NOTE,
     AccessibilityCheck,
     AccessibilityEvidenceStatus,
     AccessibilityResult,
@@ -28,8 +34,11 @@ def build_accessibility_table(result: AccessibilityResult) -> str:
             + " | ".join(
                 [
                     _markdown_table_cell(_accessibility_station_label(check)),
-                    _markdown_table_cell("; ".join(confirmed) or "확인된 항목 없음"),
-                    _markdown_table_cell("; ".join(attention) or "추가 확인 항목 없음"),
+                    _markdown_table_items(confirmed, fallback="확인된 항목 없음"),
+                    _markdown_table_items(
+                        attention,
+                        fallback="추가 확인 항목 없음",
+                    ),
                 ]
             )
             + " |"
@@ -71,7 +80,7 @@ def _accessibility_table_details(
         and check.station_has_elevator != AccessibilityEvidenceStatus.CONFIRMED
     ):
         _append_restroom_table_values(check, confirmed, attention)
-        attention.extend(check.notes[:2])
+        attention.extend(_table_notes(check))
         return dedupe_strings(confirmed), dedupe_strings(attention)
 
     if check.line is not None and check.line_matched_elevator in {
@@ -106,10 +115,12 @@ def _accessibility_table_details(
         }:
             attention.append("표시된 엘리베이터가 실제 이용 승강장과 맞는지 확인 필요")
     else:
+        # 승강장 엘리베이터가 표에 보이면 엘리베이터가 없다는 뜻으로 읽히지 않게, 확인하지 못한 것이
+        # 그 엘리베이터와 대합실의 연결이라고 쓴다.
         _append_path_evidence(
             confirmed,
             attention,
-            "승강장→대합실",
+            "승강장 엘리베이터의 대합실" if has_platform_elevator(check) else "승강장→대합실",
             check.platform_to_concourse_verified,
         )
     _append_path_evidence(
@@ -127,14 +138,7 @@ def _accessibility_table_details(
 
     _append_restroom_table_values(check, confirmed, attention)
 
-    notes = check.notes
-    if check.elevator_details:
-        notes = [
-            note
-            for note in notes
-            if not note.startswith("정상 운행과 점검 또는 이용불가 상태")
-        ]
-    attention.extend(notes[:2])
+    attention.extend(_table_notes(check))
     return dedupe_strings(confirmed), dedupe_strings(attention)
 
 
@@ -150,10 +154,25 @@ def _append_restroom_table_values(
             confirmed.append("장애인화장실 확인(참고)")
         else:
             confirmed.append("장애인화장실 확인")
+    elif check.restroom_available is False and restroom_source_unsupported(check):
+        # "미확인"과 "제공 범위 밖" 메모를 한 칸에 겹쳐 쓰지 않고 엘리베이터 칸과 같은 꼴로 쓴다.
+        attention.append(f"장애인화장실 정보: 현재 데이터 제공 범위 밖{_restroom_need(check)}")
     elif check.restroom_available is False and check.restroom_required is True:
         attention.append("장애인화장실 미확인(필수)")
     elif check.restroom_available is False and check.restroom_required is False:
         attention.append("장애인화장실 미확인(참고)")
+
+
+def restroom_source_unsupported(check: AccessibilityCheck) -> bool:
+    return RESTROOM_SOURCE_UNSUPPORTED_NOTE in check.notes
+
+
+def _restroom_need(check: AccessibilityCheck) -> str:
+    if check.restroom_required is True:
+        return "(필수)"
+    if check.restroom_required is False:
+        return "(참고)"
+    return ""
 
 
 def _elevator_detail_table_values(
@@ -181,8 +200,21 @@ def _elevator_detail_table_values(
 
     remaining = len(check.elevator_details) - len(selected)
     if remaining > 0:
-        attention.append(f"그 외 엘리베이터 {remaining}건은 상세 결과에서 확인")
+        # 무엇을 물으면 나머지를 볼 수 있는지 그대로 쓸 수 있는 질문으로 알려 준다.
+        station = station_label(check.station)
+        query = f"{check.line}호선 {station}" if check.line else station
+        attention.append(f"그 외 엘리베이터 {remaining}건은 '{query} 엘리베이터' 질문으로 확인")
     return confirmed, attention
+
+
+def _table_notes(check: AccessibilityCheck) -> list[str]:
+    # 엘리베이터 유무·운행 상태·연결 구간은 표가 항목으로 직접 보여 준다. 같은 내용을 담은 판단 메모
+    # ("엘리베이터 정보를 찾지 못했습니다" 등)는 같은 칸에서 반복하지 않고 나머지 메모만 붙인다.
+    return [
+        note
+        for note in check.notes
+        if "엘리베이터" not in note and note != RESTROOM_SOURCE_UNSUPPORTED_NOTE
+    ][:2]
 
 
 def _select_elevator_details(
@@ -211,19 +243,42 @@ def _select_elevator_details(
     selected: list[ElevatorEvidenceItem] = []
     if mixed and restricted and available:
         selected.extend([restricted[0], available[0]])
-    for detail in ordered:
-        if detail in selected:
+    # 출입구 엘리베이터만 여러 대 보여 주고 승강장 쪽 엘리베이터를 "그 외"로 숨기지 않도록,
+    # 역 안쪽과 출입구 쪽을 한 대씩 먼저 고른 뒤 남은 자리를 채운다.
+    for is_exit in (False, True):
+        if any(_is_exit_elevator(detail) is is_exit for detail in selected):
             continue
-        selected.append(detail)
+        candidate = next(
+            (detail for detail in ordered if _is_exit_elevator(detail) is is_exit),
+            None,
+        )
+        if candidate is not None and len(selected) < MAX_VISIBLE_ELEVATOR_DETAILS:
+            selected.append(candidate)
+    for detail in ordered:
         if len(selected) >= MAX_VISIBLE_ELEVATOR_DETAILS:
             break
-    return selected
+        if detail not in selected:
+            selected.append(detail)
+    return sorted(selected, key=ordered.index)
+
+
+def _is_exit_elevator(detail: ElevatorEvidenceItem) -> bool:
+    text = " ".join(part for part in (detail.location, detail.facility_name) if part)
+    return any(marker in text for marker in ("출구", "출입구", "외부"))
+
+
+def is_platform_elevator(detail: ElevatorEvidenceItem) -> bool:
+    return is_platform_position(detail.location)
+
+
+def has_platform_elevator(check: AccessibilityCheck) -> bool:
+    return any(is_platform_elevator(detail) for detail in check.elevator_details)
 
 
 def _elevator_detail_location(detail: ElevatorEvidenceItem) -> str:
-    location = detail.location or "위치 미확인"
+    location = label_platform_position(tidy_location_text(detail.location or "위치 미확인"))
     if detail.operation_section and detail.operation_section not in location:
-        return f"{location} (운행구간 {detail.operation_section})"
+        return f"{location} ({detail.operation_section})"
     return location
 
 
@@ -250,10 +305,11 @@ def _append_path_evidence(
 ) -> None:
     if status == AccessibilityEvidenceStatus.CONFIRMED:
         confirmed.append(f"{label} 연결 확인")
-    elif status in {
-        AccessibilityEvidenceStatus.FAILED,
-        AccessibilityEvidenceStatus.UNVERIFIED,
-    }:
+    elif status == AccessibilityEvidenceStatus.UNVERIFIED:
+        # 시설 설명에 연결 구간이 없을 뿐 조회는 됐다. 운행 중인 엘리베이터와 나란히 보여도 모순처럼
+        # 읽히지 않게 "정보 없음"으로 쓴다.
+        attention.append(f"{label} 연결 정보 없음")
+    elif status == AccessibilityEvidenceStatus.FAILED:
         attention.append(f"{label} 연결 확인 필요")
 
 
@@ -304,6 +360,13 @@ def _accessibility_station_label(check: AccessibilityCheck) -> str:
 
 def _markdown_table_cell(value: str) -> str:
     return value.replace("|", "\\|").replace("\r", " ").replace("\n", " ").strip()
+
+
+def _markdown_table_items(items: list[str], *, fallback: str) -> str:
+    visible_items = [_markdown_table_cell(item) for item in items if item.strip()]
+    if not visible_items:
+        return _markdown_table_cell(fallback)
+    return "<br>".join(f"• {item}" for item in visible_items)
 
 
 def accessibility_check_points(result: AccessibilityResult) -> list[str]:
@@ -450,10 +513,14 @@ def line_summary(route: RouteCandidate) -> str | None:
 
 
 def restroom_missing_station_names(result: AccessibilityResult) -> list[str]:
+    return [check.station for check in restroom_missing_checks(result)]
+
+
+def restroom_missing_checks(result: AccessibilityResult) -> list[AccessibilityCheck]:
     if not result.mobility_profile.need_accessible_restroom:
         return []
     return [
-        check.station
+        check
         for check in result.accessibility_checks
         if check.restroom_required is True and check.restroom_available is False
     ]

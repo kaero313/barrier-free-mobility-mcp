@@ -24,6 +24,7 @@ from app.services.user_message_decision import (
     action_heading,
     headline,
     judgement,
+    lead_points,
     mobility_condition_summary,
     pre_departure_actions,
     primary_action,
@@ -31,15 +32,29 @@ from app.services.user_message_decision import (
     recommended_route,
     user_facing_reason,
 )
-from app.services.user_message_sources import data_basis, notices
+from app.services.user_message_sources import TRIP_SCOPE_NOTICE, data_basis, notices
 
 
-def build_user_message_context(result: AccessibilityResult) -> dict[str, object]:
+def build_user_message_context(
+    result: AccessibilityResult,
+    *,
+    alternative_lines: list[str] | None = None,
+) -> dict[str, object]:
+    """``alternative_lines``가 있으면 대안 경로 질문의 답으로 "다른 경로" 구역을 넣는다."""
     summary = build_user_message_summary(result)
     return {
         "user_message_summary": summary,
-        "user_message": _compose_message(summary, result),
+        "user_message": _compose_message(summary, result, alternative_lines=alternative_lines),
+        "safety_notice": _carried_safety_notice(summary.notices),
     }
+
+
+def _carried_safety_notice(notice_items: list[str]) -> str:
+    # 화면은 본문에 없는 안전 안내만 따로 보여 준다. 운행 상태를 하나도 보여 주지 않아 본문이
+    # 운행 상태 안내를 뺀 답변에서는 본문이 실제로 담은 경로 범위 안내를 안전 안내로 내보낸다.
+    if DEFAULT_SAFETY_NOTICE not in notice_items and TRIP_SCOPE_NOTICE in notice_items:
+        return TRIP_SCOPE_NOTICE
+    return DEFAULT_SAFETY_NOTICE
 
 
 def build_user_message_summary(result: AccessibilityResult) -> UserMessageSummary:
@@ -172,7 +187,11 @@ def _key_points(result: AccessibilityResult) -> list[str]:
             break
 
     if not points:
-        points.append("점검 또는 이용 제한으로 확인된 엘리베이터는 없습니다.")
+        points.append(
+            "경로를 확인하지 못해 역별 엘리베이터 정보는 조회하지 않았습니다."
+            if result.selected_route is None
+            else "점검 또는 이용 제한으로 확인된 엘리베이터는 없습니다."
+        )
 
     return dedupe_strings(points)
 
@@ -180,33 +199,55 @@ def _key_points(result: AccessibilityResult) -> list[str]:
 def _compose_message(
     summary: UserMessageSummary,
     result: AccessibilityResult,
+    *,
+    alternative_lines: list[str] | None = None,
 ) -> str:
-    actions = pre_departure_actions(result)
+    actions = pre_departure_actions(
+        result,
+        blocking_only=summary.judgement == "권장하지 않음",
+    )
     result_primary_action = primary_action(summary.judgement, result, actions)
-    main_lines = [
-        f"**{action_heading(summary.judgement)}**",
-        _ensure_sentence(summary.headline),
-    ]
+    if summary.judgement == "추가 정보 필요" and result_primary_action:
+        # 되묻는 답변은 물을 내용만 쓴다. 아직 경로를 조회하지 않았다는 사실은 질문이 드러낸다.
+        return _ensure_sentence(result_primary_action)
+    action_line = None
     if result_primary_action:
-        action_label = (
-            "확인할 내용" if summary.judgement == "추가 정보 필요" else "지금 할 일"
+        action_label = "확인할 내용" if summary.judgement == "추가 정보 필요" else "권장 확인"
+        action_line = f"**{action_label}:** {_ensure_sentence(result_primary_action)}"
+
+    main_lines = [f"**{action_heading(summary.judgement, result)}**"]
+    labelled_points = lead_points(summary.judgement, result)
+    if labelled_points:
+        # 문제, 확인된 것, 확인 안 된 것, 할 일을 라벨 붙은 줄로 나눠 끝까지 읽지 않아도 훑어 보이게
+        # 한다. 할 일은 모두 이 요약에 모아 표 아래 "추가 확인"으로 흩어 놓지 않는다.
+        main_lines.extend(["", *(f"- {point}" for point in labelled_points)])
+        lead_actions = (
+            dedupe_strings([result_primary_action, *actions]) if result_primary_action else actions
         )
-        main_lines.append(
-            f"**{action_label}:** {_ensure_sentence(result_primary_action)}"
-        )
+        main_lines.extend(_action_items(lead_actions))
+        actions = []
+    else:
+        # 확인 불가는 첫 줄이 이미 이유를 말하므로 같은 내용의 요약 문장을 덧붙이지 않는다.
+        if summary.judgement != "확인 불가":
+            main_lines.append(_ensure_sentence(summary.headline))
+        if action_line:
+            main_lines.extend(["", action_line])
 
     sections = ["\n".join(main_lines)]
 
     route_section = _route_section(summary.recommended_route, result.selected_route)
     if route_section:
         sections.append(route_section)
+    if alternative_lines and result.selected_route is not None:
+        sections.append(_section("다른 경로", alternative_lines))
 
     if result.accessibility_checks:
         sections.append(build_accessibility_table(result))
-    else:
+    elif summary.judgement != "추가 정보 필요":
+        # 되묻는 답변은 아직 아무것도 조회하지 않았으므로 확인 결과 구역을 두지 않는다.
         evidence_items = (
             result.available_partial_info
-            if summary.judgement == "추가 정보 필요" and result.available_partial_info
+            if result.selected_route is None and result.available_partial_info
             else summary.key_points[:3]
         )
         sections.append(_section("확인 결과", evidence_items))
@@ -220,6 +261,14 @@ def _compose_message(
     sections.append(_notice_section(summary.notices))
 
     return "\n\n".join(section for section in sections if section).strip()
+
+
+def _action_items(actions: list[str]) -> list[str]:
+    if not actions:
+        return []
+    if len(actions) == 1:
+        return [f"- **권장 확인:** {_ensure_sentence(actions[0])}"]
+    return ["- **권장 확인:**", *(f"  - {_ensure_sentence(action)}" for action in actions)]
 
 
 def _section(title: str, items: list[str]) -> str:
