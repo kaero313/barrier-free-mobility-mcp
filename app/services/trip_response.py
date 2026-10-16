@@ -5,7 +5,7 @@ from app.engine.route_ranking import (
     build_alternative_routes,
 )
 from app.normalizers.facility_identity import facility_record_identity
-from app.normalizers.helpers import normalize_station_name
+from app.normalizers.helpers import normalize_station_name, transfer_text
 from app.schemas.accessibility import (
     AccessibilityResult,
     AlternativeRoute,
@@ -22,9 +22,10 @@ from app.services.result_metadata import (
 )
 from app.services.station_context import StationLookupContext
 from app.services.user_message import build_user_message_context
-
-REPRESENTATIVE_FACILITY_LIMITATION = (
-    "대표 접근성 시설만 포함했습니다. 전체 시설 목록은 개별 시설 조회 도구로 확인하세요."
+from app.services.user_message_accessibility import station_label
+from app.services.user_message_sources import (
+    NO_ROUTE_LIMITATION,
+    REPRESENTATIVE_FACILITY_LIMITATION,
 )
 
 
@@ -46,7 +47,8 @@ def build_station_clarification_result(
     ]
     limitations = dedupe_strings(
         [
-            "역명을 확정할 수 없어 경로 접근성 판단을 수행하지 못했습니다.",
+            "현재 검증된 역·호선 목록에서 역을 확정할 수 없어 "
+            "경로 접근성 판단을 수행하지 못했습니다.",
             *context_messages,
         ]
     )
@@ -64,7 +66,7 @@ def build_station_clarification_result(
         mobility_profile=mobility_profile,
         risk_level="UNKNOWN",
         risk_score=25,
-        route_summary="출발역 또는 도착역을 확정하지 못했습니다.",
+        route_summary=_station_clarification_summary(origin_context, destination_context),
         failed_sources=failed,
         limitations=limitations,
         clarification_needed=True,
@@ -74,10 +76,8 @@ def build_station_clarification_result(
                 "출발역과 도착역을 지하철역 이름과 호선 기준으로 다시 확인해 주세요.",
             ]
         ),
-        available_partial_info=[
-            "역명이 확정되면 엘리베이터 위치와 운행 상태를 확인할 수 있습니다.",
-            "출발역, 환승역, 도착역 기준 접근성 체크를 제공할 수 있습니다.",
-        ],
+        # 역을 확정하기 전에는 확인한 정보가 없다. 기능 소개 문장을 부분 확인 정보로 쓰지 않는다.
+        available_partial_info=[],
         **evidence_context,
     )
     return _with_user_message(result)
@@ -91,13 +91,14 @@ def build_no_route_result(
     data_sources: list[DataSourceMeta],
     failed_sources: list[FailedSource],
     limitations: list[str],
+    line_mismatches: list[str] | None = None,
 ) -> AccessibilityResult:
     deduped_sources = dedupe_data_sources(data_sources)
     deduped_failed = dedupe_failed_sources(failed_sources)
     merged_limitations = dedupe_strings(
         [
             *limitations,
-            "공공 경로 데이터에서 유효한 경로 후보를 확인하지 못했습니다.",
+            NO_ROUTE_LIMITATION,
         ]
     )
     evidence_context = build_evidence_context(
@@ -121,9 +122,21 @@ def build_no_route_result(
         failed_sources=deduped_failed,
         limitations=merged_limitations,
         clarification_needed=False,
-        available_partial_info=[
-            f"출발역 {origin}역과 도착역 {destination}역은 확인했습니다."
-        ],
+        available_partial_info=dedupe_strings(
+            [
+                *(line_mismatches or []),
+                "경로를 확인하지 못해 역별 엘리베이터 정보는 조회하지 않았습니다.",
+                # 호선 불일치 안내가 이미 어느 역이 문제인지 말하면 역 확인 문장은 덧붙이지 않는다.
+                *(
+                    []
+                    if line_mismatches
+                    else [
+                        f"출발역 {station_label(origin)}과 도착역 "
+                        f"{station_label(destination)}은 확인했습니다."
+                    ]
+                ),
+            ]
+        ),
         **evidence_context,
     )
     return _with_user_message(result)
@@ -267,12 +280,25 @@ def _compact_alternatives(alternatives: list[AlternativeRoute]) -> list[Alternat
     return alternatives[:2]
 
 
+def _station_clarification_summary(
+    origin_context: StationLookupContext,
+    destination_context: StationLookupContext,
+) -> str:
+    roles = [
+        role
+        for role, context in (("출발역", origin_context), ("도착역", destination_context))
+        if context.needs_clarification
+    ]
+    subject = "과 ".join(roles) if roles else "출발역 또는 도착역"
+    return f"{subject}을 확정하지 못해 아직 경로를 조회하지 않았습니다."
+
+
 def _route_summary(route: RouteCandidate | None, origin: str, destination: str) -> str:
     if route is None:
         return f"{origin}에서 {destination}까지의 경로 후보를 확인하지 못했습니다."
     return (
         route.raw_summary
-        or f"{origin}에서 {destination}까지 {route.transfer_count}회 환승 경로입니다."
+        or f"{origin}에서 {destination}까지 {transfer_text(route.transfer_count)} 경로입니다."
     )
 
 

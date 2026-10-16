@@ -146,4 +146,34 @@ async def test_accessible_trip_rejects_route_with_mismatched_endpoint_line() -> 
 
     assert result.status == ResponseStatus.FAILED
     assert result.selected_route is None
-    assert any("일치하지 않은 경로 후보" in item for item in result.limitations)
+    # 남은 경로가 없으면 호선 불일치 안내가 제외 이유를 말하므로 제외 건수 안내를 따로 두지 않는다.
+    assert not any("일치하지 않은 경로 후보" in item for item in result.limitations)
+    assert result.available_partial_info[0] == (
+        "홍대입구역은 경로 데이터에서 경의선으로 연결되어 입력한 2호선과 다릅니다."
+    )
+    assert result.user_message.startswith(
+        "**입력한 역·호선과 맞는 지하철 경로를 찾지 못했습니다.**"
+    )
+    assert "호선을 빼고 다시 조회하거나" in result.user_message
+    assert "역별 엘리베이터 정보는 조회하지 않았습니다" in result.user_message
+    assert "잠시 후 다시 조회" not in result.user_message
+    assert "점검 또는 이용 제한으로 확인된 엘리베이터는 없습니다" not in result.user_message
+
+
+async def test_unstated_endpoint_line_follows_the_route_line() -> None:
+    service = AccessibilityService(route_service=_WrongOriginLineRouteService())
+
+    result = await service.check_accessible_trip(
+        "홍대입구",
+        "2호선 삼성",
+        MobilityProfile(wheelchair=True, can_use_stairs=False, need_elevator_only=True),
+    )
+
+    # 역 이름만으로 정한 2호선은 사용자가 고른 호선이 아니다. 경로가 경의선으로 출발해도
+    # 경로를 버리지 않고, 출발역은 실제로 타는 경의선 기준으로 본다.
+    assert result.status != ResponseStatus.FAILED
+    assert result.selected_route is not None
+    assert not any("입력한 2호선과 다릅니다" in info for info in result.available_partial_info)
+    origin_check = next(check for check in result.accessibility_checks if check.role == "origin")
+    assert origin_check.line != "2"
+    assert "입력한" not in result.user_message

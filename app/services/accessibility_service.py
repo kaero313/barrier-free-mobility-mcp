@@ -32,6 +32,7 @@ from app.services.station_context import (
     route_line_mismatch_limitations,
 )
 from app.services.station_service import StationService
+from app.services.station_support import station_support_limitations
 from app.services.trip_response import (
     build_no_route_result,
     build_station_clarification_result,
@@ -95,27 +96,33 @@ class AccessibilityService:
         )
         route_data_sources = list(route_result.data_sources)
         route_failed_sources = list(route_result.failed_sources)
-        route_limitations = list(route_result.limitations)
+        route_limitations = [
+            *route_result.limitations,
+            *station_support_limitations(
+                origin_context,
+                destination_context,
+                app_mode=self.settings.app_mode,
+            ),
+        ]
 
         usable_route_candidates = [
             route for route in route_result.value if is_usable_route_candidate(route)
         ]
-        route_candidates = [
-            route
-            for route in usable_route_candidates
-            if not route_line_mismatch_limitations(
+        route_candidates: list[RouteCandidate] = []
+        line_mismatches: list[str] = []
+        for route in usable_route_candidates:
+            mismatches = route_line_mismatch_limitations(
                 [route],
                 origin_context,
                 destination_context,
             )
-        ]
+            if mismatches:
+                line_mismatches.extend(mismatches)
+            else:
+                route_candidates.append(route)
         rejected_count = len(usable_route_candidates) - len(route_candidates)
-        if rejected_count:
-            route_limitations.append(
-                "입력한 역·호선과 일치하지 않은 경로 후보를 "
-                f"{rejected_count}개 제외했습니다."
-            )
         if not route_candidates:
+            # 남은 경로가 없으면 호선 불일치 안내(line_mismatches)가 제외 이유를 이미 말한다.
             return build_no_route_result(
                 origin=normalized_origin,
                 destination=normalized_destination,
@@ -123,6 +130,12 @@ class AccessibilityService:
                 data_sources=route_data_sources,
                 failed_sources=route_failed_sources,
                 limitations=route_limitations,
+                line_mismatches=line_mismatches,
+            )
+        if rejected_count:
+            route_limitations.append(
+                "입력한 역·호선과 일치하지 않은 경로 후보를 "
+                f"{rejected_count}개 제외했습니다."
             )
 
         route_station_contexts = build_route_station_contexts(
